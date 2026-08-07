@@ -1,0 +1,53 @@
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### IntelliJ IDEA ###
+.idea/*
+*.iws
+*.iml
+*.ipr
+
+### Eclipse ###
+.apt_generated
+.classpath
+.factorypath
+.configProject
+.settings
+.springBeans
+.sts4-cache
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/
+
+### Mac OS ###
+.DS_Store
+
+### Locals for this configProject
+# Игнорировать .develop
+.develop
+# Игнорировать всё в .logs
+logs/*
+# Игнорировать всё в data
+data/*
+# Игнорировать всё в flight_recording
+flight_recording/*
+# Не игнорировать саму папку data/configProject
+!data/configProject/
+# Игнорировать всё в data/configProject (внутри неё)
+data/configProject/*
+# Игнорировать всё в configurations
+configurations/*
+# Не игнорировать example.configuration.xml в configurations
+!configurations/example.configuration.xml
