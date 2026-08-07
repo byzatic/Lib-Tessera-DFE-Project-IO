@@ -1,4 +1,4 @@
-package io.github.byzatic.lib.configio.infrastructure.dto.general;
+package io.github.byzatic.lib.configio.infrastructure.dto.raw.general;
 
 import com.google.gson.annotations.SerializedName;
 

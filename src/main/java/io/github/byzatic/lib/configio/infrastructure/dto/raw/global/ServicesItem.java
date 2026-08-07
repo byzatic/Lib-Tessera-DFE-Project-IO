@@ -1,11 +1,12 @@
-package io.github.byzatic.lib.configio.infrastructure.dto.general;
+package io.github.byzatic.lib.configio.infrastructure.dto.raw.global;
 
 import java.util.List;
 import java.util.Objects;
 
 import com.google.gson.annotations.SerializedName;
+import io.github.byzatic.lib.configio.infrastructure.dto.raw.general.OptionsItem;
 
-public class StoragesItem{
+public class ServicesItem{
 
 	@SerializedName("options")
 	private List<OptionsItem> options;
@@ -16,10 +17,10 @@ public class StoragesItem{
 	@SerializedName("id_name")
 	private String idName;
 
-	public StoragesItem() {
+	public ServicesItem() {
 	}
 
-	private StoragesItem(Builder builder) {
+	private ServicesItem(Builder builder) {
 		options = builder.options;
 		description = builder.description;
 		idName = builder.idName;
@@ -29,7 +30,7 @@ public class StoragesItem{
 		return new Builder();
 	}
 
-	public static Builder newBuilder(StoragesItem copy) {
+	public static Builder newBuilder(ServicesItem copy) {
 		Builder builder = new Builder();
 		builder.options = copy.getOptions();
 		builder.description = copy.getDescription();
@@ -52,7 +53,7 @@ public class StoragesItem{
 	@Override
 	public boolean equals(Object o) {
 		if (o == null || getClass() != o.getClass()) return false;
-		StoragesItem that = (StoragesItem) o;
+		ServicesItem that = (ServicesItem) o;
 		return Objects.equals(options, that.options) && Objects.equals(description, that.description) && Objects.equals(idName, that.idName);
 	}
 
@@ -63,7 +64,7 @@ public class StoragesItem{
 
 	@Override
 	public String toString() {
-		return "StoragesItem{" +
+		return "ServicesItem{" +
 				"options=" + options +
 				", description='" + description + '\'' +
 				", idName='" + idName + '\'' +
@@ -71,7 +72,7 @@ public class StoragesItem{
 	}
 
 	/**
-	 * {@code StoragesItem} builder static inner class.
+	 * {@code ServicesItem} builder static inner class.
 	 */
 	public static final class Builder {
 		private List<OptionsItem> options;
@@ -115,12 +116,12 @@ public class StoragesItem{
 		}
 
 		/**
-		 * Returns a {@code StoragesItem} built from the parameters previously set.
+		 * Returns a {@code ServicesItem} built from the parameters previously set.
 		 *
-		 * @return a {@code StoragesItem} built with parameters of this {@code StoragesItem.Builder}
+		 * @return a {@code ServicesItem} built with parameters of this {@code ServicesItem.Builder}
 		 */
-		public StoragesItem build() {
-			return new StoragesItem(this);
+		public ServicesItem build() {
+			return new ServicesItem(this);
 		}
 	}
 }

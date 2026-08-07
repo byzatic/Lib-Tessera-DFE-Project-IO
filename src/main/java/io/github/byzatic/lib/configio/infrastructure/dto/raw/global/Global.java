@@ -1,10 +1,10 @@
-package io.github.byzatic.lib.configio.infrastructure.dto.global;
+package io.github.byzatic.lib.configio.infrastructure.dto.raw.global;
 
 import java.util.List;
 import java.util.Objects;
 
 import com.google.gson.annotations.SerializedName;
-import io.github.byzatic.lib.configio.infrastructure.dto.general.StoragesItem;
+import io.github.byzatic.lib.configio.infrastructure.dto.raw.general.StoragesItem;
 
 public class Global{
 

@@ -1,12 +1,11 @@
-package io.github.byzatic.lib.configio.infrastructure.dto.global;
+package io.github.byzatic.lib.configio.infrastructure.dto.raw.general;
 
 import java.util.List;
 import java.util.Objects;
 
 import com.google.gson.annotations.SerializedName;
-import io.github.byzatic.lib.configio.infrastructure.dto.general.OptionsItem;
 
-public class ServicesItem{
+public class StoragesItem{
 
 	@SerializedName("options")
 	private List<OptionsItem> options;
@@ -17,10 +16,10 @@ public class ServicesItem{
 	@SerializedName("id_name")
 	private String idName;
 
-	public ServicesItem() {
+	public StoragesItem() {
 	}
 
-	private ServicesItem(Builder builder) {
+	private StoragesItem(Builder builder) {
 		options = builder.options;
 		description = builder.description;
 		idName = builder.idName;
@@ -30,7 +29,7 @@ public class ServicesItem{
 		return new Builder();
 	}
 
-	public static Builder newBuilder(ServicesItem copy) {
+	public static Builder newBuilder(StoragesItem copy) {
 		Builder builder = new Builder();
 		builder.options = copy.getOptions();
 		builder.description = copy.getDescription();
@@ -53,7 +52,7 @@ public class ServicesItem{
 	@Override
 	public boolean equals(Object o) {
 		if (o == null || getClass() != o.getClass()) return false;
-		ServicesItem that = (ServicesItem) o;
+		StoragesItem that = (StoragesItem) o;
 		return Objects.equals(options, that.options) && Objects.equals(description, that.description) && Objects.equals(idName, that.idName);
 	}
 
@@ -64,7 +63,7 @@ public class ServicesItem{
 
 	@Override
 	public String toString() {
-		return "ServicesItem{" +
+		return "StoragesItem{" +
 				"options=" + options +
 				", description='" + description + '\'' +
 				", idName='" + idName + '\'' +
@@ -72,7 +71,7 @@ public class ServicesItem{
 	}
 
 	/**
-	 * {@code ServicesItem} builder static inner class.
+	 * {@code StoragesItem} builder static inner class.
 	 */
 	public static final class Builder {
 		private List<OptionsItem> options;
@@ -116,12 +115,12 @@ public class ServicesItem{
 		}
 
 		/**
-		 * Returns a {@code ServicesItem} built from the parameters previously set.
+		 * Returns a {@code StoragesItem} built from the parameters previously set.
 		 *
-		 * @return a {@code ServicesItem} built with parameters of this {@code ServicesItem.Builder}
+		 * @return a {@code StoragesItem} built with parameters of this {@code StoragesItem.Builder}
 		 */
-		public ServicesItem build() {
-			return new ServicesItem(this);
+		public StoragesItem build() {
+			return new StoragesItem(this);
 		}
 	}
 }
