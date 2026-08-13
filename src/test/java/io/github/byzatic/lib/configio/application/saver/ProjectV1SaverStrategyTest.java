@@ -21,7 +21,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.Arrays;
+import java.util.Enumeration;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -33,22 +39,112 @@ public class ProjectV1SaverStrategyTest {
         ProjectLoaderInterface loader = ProjectV1LoaderFactory.create();
         ProjectSaverInterface saver = ProjectV1SaverFactory.create();
         Path sourceDirectory = Path.of(".develop", "MyAwsomeProject");
-        Path targetDirectory = Files.createTempDirectory("project-v1-saver-test-");
+        Path testDirectory = Files.createTempDirectory("project-v1-saver-test-");
+        Path targetDirectory = testDirectory.resolve("saved-project");
 
         try {
             try (ProjectLoadResultDataObject source = loader.load(sourceDirectory)) {
-                saver.save(
+                Path archive = saver.save(
                         targetDirectory,
                         source.getGlobal(),
                         source.getNodeContainer()
                 );
+                assertEquals(testDirectory.resolve("saved-project.zip"), archive);
+                assertTrue(Files.isRegularFile(archive));
+                assertArchiveContainsProjectFiles(archive, "saved-project");
 
                 try (ProjectLoadResultDataObject saved = loader.load(targetDirectory)) {
                     assertEquivalent(source, saved);
                 }
             }
         } finally {
-            deleteTree(targetDirectory);
+            deleteTree(testDirectory);
+        }
+    }
+
+    @Test
+    public void shouldSaveModuleAndServiceJarsBeforeCreatingArchive() throws Exception {
+        ProjectLoaderInterface loader = ProjectV1LoaderFactory.create();
+        ProjectSaverInterface saver = ProjectV1SaverFactory.create();
+        Path sourceDirectory = Path.of(".develop", "MyAwsomeProject");
+        Path moduleJar = sourceDirectory.resolve(
+                Path.of(
+                        "modules",
+                        "workflow_routines",
+                        "workflowroutine-get-data-0.0.1-jar-with-dependencies.jar"
+                )
+        );
+        Path serviceJar = sourceDirectory.resolve(
+                Path.of(
+                        "modules",
+                        "services",
+                        "service-prometheus-export-0.0.1-jar-with-dependencies.jar"
+                )
+        );
+        Path testDirectory = Files.createTempDirectory("project-v1-plugin-saver-test-");
+        Path targetDirectory = testDirectory.resolve("assembled-project");
+
+        try {
+            try (ProjectLoadResultDataObject source = loader.load(sourceDirectory)) {
+                Path archive = saver.save(
+                        targetDirectory,
+                        source.getGlobal(),
+                        source.getNodeContainer(),
+                        Arrays.asList(moduleJar),
+                        Arrays.asList(serviceJar)
+                );
+
+                Path savedModule = targetDirectory
+                        .resolve("modules")
+                        .resolve("workflow_routines")
+                        .resolve(moduleJar.getFileName());
+                Path savedService = targetDirectory
+                        .resolve("modules")
+                        .resolve("services")
+                        .resolve(serviceJar.getFileName());
+                assertTrue(Files.isRegularFile(savedModule));
+                assertTrue(Files.isRegularFile(savedService));
+                assertEquals(Files.size(moduleJar), Files.size(savedModule));
+                assertEquals(Files.size(serviceJar), Files.size(savedService));
+                assertArchiveContains(
+                        archive,
+                        "assembled-project/modules/workflow_routines/"
+                                + moduleJar.getFileName(),
+                        "assembled-project/modules/services/" + serviceJar.getFileName()
+                );
+            }
+        } finally {
+            deleteTree(testDirectory);
+        }
+    }
+
+    private void assertArchiveContainsProjectFiles(Path archive, String projectName)
+            throws IOException {
+        assertArchiveContains(
+                archive,
+                projectName + "/",
+                projectName + "/data/Project.json",
+                projectName + "/data/Global.json",
+                projectName + "/modules/shared/",
+                projectName + "/modules/workflow_routines/",
+                projectName + "/modules/services/"
+        );
+    }
+
+    private void assertArchiveContains(Path archive, String... expectedEntries)
+            throws IOException {
+        Set<String> entryNames = new HashSet<String>();
+        try (ZipFile zipFile = new ZipFile(archive.toFile())) {
+            Enumeration<? extends ZipEntry> entries = zipFile.entries();
+            while (entries.hasMoreElements()) {
+                entryNames.add(entries.nextElement().getName());
+            }
+        }
+        for (String expectedEntry : expectedEntries) {
+            assertTrue(
+                    "Missing ZIP entry: " + expectedEntry,
+                    entryNames.contains(expectedEntry)
+            );
         }
     }
 

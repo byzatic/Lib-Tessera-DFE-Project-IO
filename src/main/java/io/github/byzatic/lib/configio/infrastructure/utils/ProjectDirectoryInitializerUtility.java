@@ -12,6 +12,10 @@ public final class ProjectDirectoryInitializerUtility {
         try {
             Files.createDirectories(projectDirectory.resolve("data").resolve("nodes"));
             Files.createDirectories(projectDirectory.resolve("modules").resolve("shared"));
+            Files.createDirectories(
+                    projectDirectory.resolve("modules").resolve("workflow_routines")
+            );
+            Files.createDirectories(projectDirectory.resolve("modules").resolve("services"));
         } catch (IOException exception) {
             throw new ProjectSavingException(
                     "Cannot initialize project directory: " + projectDirectory,

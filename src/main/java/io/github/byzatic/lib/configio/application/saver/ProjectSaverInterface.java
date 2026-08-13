@@ -6,14 +6,29 @@ import io.github.byzatic.lib.configio.domain.model.ProjectGlobalDataObject;
 import io.github.byzatic.lib.configio.domain.model.ProjectLoadResultDataObject;
 
 import java.nio.file.Path;
+import java.util.List;
 
 public interface ProjectSaverInterface {
 
-    void save(ProjectLoadResultDataObject project) throws ProjectSavingException;
+    Path save(ProjectLoadResultDataObject project) throws ProjectSavingException;
 
-    void save(
+    Path save(
+            ProjectLoadResultDataObject project,
+            List<Path> moduleJars,
+            List<Path> serviceJars
+    ) throws ProjectSavingException;
+
+    Path save(
             Path projectDirectory,
             ProjectGlobalDataObject global,
             NodeContainerDataObject nodeContainer
+    ) throws ProjectSavingException;
+
+    Path save(
+            Path projectDirectory,
+            ProjectGlobalDataObject global,
+            NodeContainerDataObject nodeContainer,
+            List<Path> moduleJars,
+            List<Path> serviceJars
     ) throws ProjectSavingException;
 }
