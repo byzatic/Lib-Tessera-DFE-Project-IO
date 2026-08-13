@@ -56,6 +56,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <!-- dependency versions list -->
         <version.java_byzatic_commons>0.0.2</version.java_byzatic_commons>
+        <version.tessera_workflow_toolkit>0.0.1</version.tessera_workflow_toolkit>
         <version.slf4j>2.0.17</version.slf4j>
         <version.logback>1.5.25</version.logback>
         <version.junit>4.13.1</version.junit>
@@ -71,6 +72,18 @@
             <groupId>io.github.byzatic</groupId>
             <artifactId>java-byzatic-commons</artifactId>
             <version>${version.java_byzatic_commons}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.github.byzatic</groupId>
+            <artifactId>tessera-service-lib</artifactId>
+            <version>${version.tessera_workflow_toolkit}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.github.byzatic</groupId>
+            <artifactId>tessera-workflowroutine-lib</artifactId>
+            <version>${version.tessera_workflow_toolkit}</version>
         </dependency>
 
         <!-- https://mvnrepository.com/artifact/com.github.zafarkhaja/java-semver -->
