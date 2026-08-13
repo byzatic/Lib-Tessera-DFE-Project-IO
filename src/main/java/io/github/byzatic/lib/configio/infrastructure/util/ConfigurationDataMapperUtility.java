@@ -26,6 +26,51 @@ import java.util.List;
 
 public final class ConfigurationDataMapperUtility {
 
+    public Global mapProjectGlobal(ProjectGlobalDataObject source) {
+        List<ServicesItem> services = new ArrayList<ServicesItem>();
+        for (ServiceDataObject service : source.getServices()) {
+            services.add(ServicesItem.newBuilder()
+                    .setOptions(mapOptionItems(service.getOptions()))
+                    .setDescription(service.getDescription())
+                    .setIdName(service.getIdName())
+                    .build());
+        }
+        return Global.newBuilder()
+                .setStorages(mapStorageItems(source.getStorages()))
+                .setServices(services)
+                .build();
+    }
+
+    public NodeGlobal mapNodeGlobal(NodeGlobalDataObject source) {
+        return NodeGlobal.newBuilder()
+                .setStorages(mapStorageItems(source.getStorages()))
+                .build();
+    }
+
+    public Pipeline mapPipeline(PipelineDataObject source) {
+        List<StagesConsistencyItem> consistency =
+                new ArrayList<StagesConsistencyItem>();
+        for (StageConsistencyDataObject stage : source.getStagesConsistency()) {
+            consistency.add(StagesConsistencyItem.newBuilder()
+                    .setStageId(stage.getStageId())
+                    .setPosition(stage.getPosition())
+                    .build());
+        }
+
+        List<StagesDescriptionItem> descriptions =
+                new ArrayList<StagesDescriptionItem>();
+        for (StageDescriptionDataObject stage : source.getStagesDescription()) {
+            descriptions.add(StagesDescriptionItem.newBuilder()
+                    .setWorkersDescription(mapWorkerItems(stage.getWorkers()))
+                    .setStageId(stage.getStageId())
+                    .build());
+        }
+        return Pipeline.newBuilder()
+                .setStagesConsistency(consistency)
+                .setStagesDescription(descriptions)
+                .build();
+    }
+
     public ProjectGlobalDataObject mapProjectGlobal(Global source) {
         List<StorageDataObject> storages = mapStorages(source.getStorages());
         List<ServiceDataObject> services = new ArrayList<ServiceDataObject>();
@@ -84,6 +129,18 @@ public final class ConfigurationDataMapperUtility {
         return storages;
     }
 
+    private List<StoragesItem> mapStorageItems(List<StorageDataObject> source) {
+        List<StoragesItem> storages = new ArrayList<StoragesItem>();
+        for (StorageDataObject storage : source) {
+            storages.add(StoragesItem.newBuilder()
+                    .setOptions(mapOptionItems(storage.getOptions()))
+                    .setDescription(storage.getDescription())
+                    .setIdName(storage.getIdName())
+                    .build());
+        }
+        return storages;
+    }
+
     private List<ConfigurationOptionDataObject> mapOptions(List<OptionsItem> source) {
         List<ConfigurationOptionDataObject> options =
                 new ArrayList<ConfigurationOptionDataObject>();
@@ -96,6 +153,19 @@ public final class ConfigurationDataMapperUtility {
                         option.getName()
                 ));
             }
+        }
+        return options;
+    }
+
+    private List<OptionsItem> mapOptionItems(List<ConfigurationOptionDataObject> source) {
+        List<OptionsItem> options = new ArrayList<OptionsItem>();
+        for (ConfigurationOptionDataObject option : source) {
+            options.add(OptionsItem.newBuilder()
+                    .setValue(option.getValue())
+                    .setKey(option.getKey())
+                    .setData(option.getData())
+                    .setName(option.getName())
+                    .build());
         }
         return options;
     }
@@ -117,6 +187,22 @@ public final class ConfigurationDataMapperUtility {
         return workers;
     }
 
+    private List<WorkersDescriptionItem> mapWorkerItems(
+            List<WorkerDescriptionDataObject> source
+    ) {
+        List<WorkersDescriptionItem> workers = new ArrayList<WorkersDescriptionItem>();
+        for (WorkerDescriptionDataObject worker : source) {
+            workers.add(WorkersDescriptionItem.newBuilder()
+                    .setName(worker.getName())
+                    .setDescription(worker.getDescription())
+                    .setConfigurationFiles(mapConfigurationFileItems(
+                            worker.getConfigurationFiles()
+                    ))
+                    .build());
+        }
+        return workers;
+    }
+
     private List<ConfigurationFileDataObject> mapConfigurationFiles(
             List<ConfigurationFilesItem> source
     ) {
@@ -129,6 +215,19 @@ public final class ConfigurationDataMapperUtility {
                         file.getConfigurationFileId()
                 ));
             }
+        }
+        return files;
+    }
+
+    private List<ConfigurationFilesItem> mapConfigurationFileItems(
+            List<ConfigurationFileDataObject> source
+    ) {
+        List<ConfigurationFilesItem> files = new ArrayList<ConfigurationFilesItem>();
+        for (ConfigurationFileDataObject file : source) {
+            files.add(ConfigurationFilesItem.newBuilder()
+                    .setDescription(file.getDescription())
+                    .setConfigurationFileId(file.getConfigurationFileId())
+                    .build());
         }
         return files;
     }

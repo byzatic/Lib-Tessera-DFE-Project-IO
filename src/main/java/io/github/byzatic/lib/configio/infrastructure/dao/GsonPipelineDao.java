@@ -2,6 +2,7 @@ package io.github.byzatic.lib.configio.infrastructure.dao;
 
 import io.github.byzatic.lib.configio.application.dao.PipelineDaoInterface;
 import io.github.byzatic.lib.configio.domain.exception.ProjectLoadingException;
+import io.github.byzatic.lib.configio.domain.exception.ProjectSavingException;
 import io.github.byzatic.lib.configio.domain.model.GraphNodeReferenceDataObject;
 import io.github.byzatic.lib.configio.domain.model.NodeDataObject;
 import io.github.byzatic.lib.configio.domain.model.PipelineDataObject;
@@ -10,6 +11,7 @@ import io.github.byzatic.lib.configio.infrastructure.dto.raw.node.pipeline.Pipel
 import io.github.byzatic.lib.configio.infrastructure.strategy.NodePathResolverStrategy;
 import io.github.byzatic.lib.configio.infrastructure.util.ConfigurationDataMapperUtility;
 import io.github.byzatic.lib.configio.infrastructure.util.GsonJsonFileReaderUtility;
+import io.github.byzatic.lib.configio.infrastructure.utils.GsonJsonFileWriterUtility;
 
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
@@ -21,12 +23,14 @@ public final class GsonPipelineDao implements PipelineDaoInterface {
     private final GsonJsonFileReaderUtility jsonFileReader;
     private final NodePathResolverStrategy nodePathResolver;
     private final ConfigurationDataMapperUtility dataMapper;
+    private final GsonJsonFileWriterUtility jsonFileWriter;
 
     public GsonPipelineDao() {
         this(
                 new GsonJsonFileReaderUtility(),
                 new NodePathResolverStrategy(),
-                new ConfigurationDataMapperUtility()
+                new ConfigurationDataMapperUtility(),
+                new GsonJsonFileWriterUtility()
         );
     }
 
@@ -35,9 +39,24 @@ public final class GsonPipelineDao implements PipelineDaoInterface {
             NodePathResolverStrategy nodePathResolver,
             ConfigurationDataMapperUtility dataMapper
     ) {
+        this(
+                jsonFileReader,
+                nodePathResolver,
+                dataMapper,
+                new GsonJsonFileWriterUtility()
+        );
+    }
+
+    public GsonPipelineDao(
+            GsonJsonFileReaderUtility jsonFileReader,
+            NodePathResolverStrategy nodePathResolver,
+            ConfigurationDataMapperUtility dataMapper,
+            GsonJsonFileWriterUtility jsonFileWriter
+    ) {
         this.jsonFileReader = Objects.requireNonNull(jsonFileReader, "jsonFileReader");
         this.nodePathResolver = Objects.requireNonNull(nodePathResolver, "nodePathResolver");
         this.dataMapper = Objects.requireNonNull(dataMapper, "dataMapper");
+        this.jsonFileWriter = Objects.requireNonNull(jsonFileWriter, "jsonFileWriter");
     }
 
     @Override
@@ -57,5 +76,33 @@ public final class GsonPipelineDao implements PipelineDaoInterface {
             result.put(entry.getKey(), dataMapper.mapPipeline(pipeline));
         }
         return result;
+    }
+
+    @Override
+    public void save(
+            Path projectDirectory,
+            ProjectStructureDataObject projectStructure,
+            Map<GraphNodeReferenceDataObject, PipelineDataObject> pipelines
+    ) throws ProjectSavingException {
+        for (Map.Entry<GraphNodeReferenceDataObject, NodeDataObject> entry
+                : projectStructure.getNodes().entrySet()) {
+            PipelineDataObject pipeline = pipelines.get(entry.getKey());
+            if (pipeline == null) {
+                throw new ProjectSavingException(
+                        "Node pipeline is missing: " + entry.getKey()
+                );
+            }
+            try {
+                Path nodeFile = nodePathResolver
+                        .resolve(projectDirectory, entry.getValue())
+                        .resolve("pipeline.json");
+                jsonFileWriter.write(nodeFile, dataMapper.mapPipeline(pipeline));
+            } catch (ProjectLoadingException exception) {
+                throw new ProjectSavingException(
+                        "Cannot resolve node directory: " + entry.getKey(),
+                        exception
+                );
+            }
+        }
     }
 }
