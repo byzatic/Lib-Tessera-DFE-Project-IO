@@ -18,10 +18,12 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.FileTime;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -57,6 +59,8 @@ public final class PollingZipProjectRevisionSource implements ProjectRevisionSou
 
     private ProjectRevisionListener listener;
     private ArchiveSignature observedSignature;
+    private ArchiveSignature processedSignature;
+    private ArchiveSignature rejectedSignature;
     private int stableObservations;
     private String processedRevisionId;
 
@@ -117,32 +121,54 @@ public final class PollingZipProjectRevisionSource implements ProjectRevisionSou
 
     private void poll() {
         Path sourceArchive = configuration.getSourceArchive();
-        if (!Files.isRegularFile(sourceArchive)) {
-            resetObservation();
-            return;
-        }
-
+        ArchiveSignature currentSignature = null;
         try {
-            ArchiveSignature currentSignature = ArchiveSignature.read(sourceArchive);
-            if (!currentSignature.equals(observedSignature)) {
-                observedSignature = currentSignature;
-                stableObservations = 1;
-            } else {
-                stableObservations++;
+            currentSignature = ArchiveSignature.readIfRegular(sourceArchive);
+            if (currentSignature == null) {
+                resetObservation();
+                return;
             }
+            if (currentSignature.equals(processedSignature)
+                    || currentSignature.equals(rejectedSignature)) {
+                resetObservation();
+                return;
+            }
+            observe(currentSignature);
             if (stableObservations < configuration.getStableObservationCount()) {
                 return;
             }
 
             String revisionId = calculateSha256(sourceArchive);
             if (revisionId.equals(processedRevisionId)) {
+                processedSignature = currentSignature;
+                rejectedSignature = null;
+                resetObservation();
                 return;
             }
-            processedRevisionId = revisionId;
-            prepareAndPublish(sourceArchive, revisionId);
+            if (prepareAndPublish(sourceArchive, revisionId)) {
+                processedRevisionId = revisionId;
+                processedSignature = currentSignature;
+                rejectedSignature = null;
+            } else {
+                rejectedSignature = currentSignature;
+            }
+            resetObservation();
         } catch (Exception exception) {
+            if (currentSignature != null) {
+                rejectedSignature = currentSignature;
+                resetObservation();
+            }
             publishFailure(sourceArchive, null, exception);
         }
+    }
+
+    private void observe(ArchiveSignature currentSignature) {
+        if (currentSignature.equals(observedSignature)) {
+            stableObservations++;
+            return;
+        }
+        observedSignature = currentSignature;
+        stableObservations = 1;
     }
 
     private void resetObservation() {
@@ -150,7 +176,7 @@ public final class PollingZipProjectRevisionSource implements ProjectRevisionSou
         stableObservations = 0;
     }
 
-    private void prepareAndPublish(Path sourceArchive, String revisionId) {
+    private boolean prepareAndPublish(Path sourceArchive, String revisionId) {
         Path revisionDirectory = null;
         ProjectLoadResultDataObject loadedProject = null;
         try {
@@ -183,10 +209,11 @@ public final class PollingZipProjectRevisionSource implements ProjectRevisionSou
             );
             loadedProject = null;
             revisionDirectory = null;
-            publishRevision(revision);
+            return publishRevision(revision);
         } catch (Exception exception) {
             closeAfterFailure(loadedProject, revisionDirectory, exception);
             publishFailure(sourceArchive, revisionId, exception);
+            return false;
         }
     }
 
@@ -296,9 +323,10 @@ public final class PollingZipProjectRevisionSource implements ProjectRevisionSou
         return result.toString();
     }
 
-    private void publishRevision(ProjectRevision revision) {
+    private boolean publishRevision(ProjectRevision revision) {
         try {
             listener.onRevisionAvailable(revision);
+            return true;
         } catch (RuntimeException exception) {
             try {
                 revision.close();
@@ -306,6 +334,7 @@ public final class PollingZipProjectRevisionSource implements ProjectRevisionSou
                 exception.addSuppressed(closeException);
             }
             publishFailure(configuration.getSourceArchive(), revision.getRevisionId(), exception);
+            return false;
         }
     }
 
@@ -386,17 +415,29 @@ public final class PollingZipProjectRevisionSource implements ProjectRevisionSou
     private static final class ArchiveSignature {
 
         private final long size;
-        private final long modifiedMillis;
+        private final FileTime modifiedTime;
+        private final Object fileKey;
 
-        private ArchiveSignature(long size, long modifiedMillis) {
+        private ArchiveSignature(long size, FileTime modifiedTime, Object fileKey) {
             this.size = size;
-            this.modifiedMillis = modifiedMillis;
+            this.modifiedTime = modifiedTime;
+            this.fileKey = fileKey;
         }
 
-        private static ArchiveSignature read(Path archive) throws IOException {
+        private static ArchiveSignature readIfRegular(Path archive) throws IOException {
+            BasicFileAttributes attributes;
+            try {
+                attributes = Files.readAttributes(archive, BasicFileAttributes.class);
+            } catch (NoSuchFileException exception) {
+                return null;
+            }
+            if (!attributes.isRegularFile()) {
+                return null;
+            }
             return new ArchiveSignature(
-                    Files.size(archive),
-                    Files.getLastModifiedTime(archive).toMillis()
+                    attributes.size(),
+                    attributes.lastModifiedTime(),
+                    attributes.fileKey()
             );
         }
 
@@ -409,13 +450,16 @@ public final class PollingZipProjectRevisionSource implements ProjectRevisionSou
                 return false;
             }
             ArchiveSignature that = (ArchiveSignature) other;
-            return size == that.size && modifiedMillis == that.modifiedMillis;
+            return size == that.size
+                    && modifiedTime.equals(that.modifiedTime)
+                    && Objects.equals(fileKey, that.fileKey);
         }
 
         @Override
         public int hashCode() {
             int result = Long.hashCode(size);
-            result = 31 * result + Long.hashCode(modifiedMillis);
+            result = 31 * result + modifiedTime.hashCode();
+            result = 31 * result + Objects.hashCode(fileKey);
             return result;
         }
     }

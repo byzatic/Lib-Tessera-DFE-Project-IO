@@ -25,10 +25,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -76,7 +78,32 @@ public class PollingZipProjectRevisionSourceTest {
             assertTrue(listener.awaitFailure());
             assertNotNull(listener.getFailure());
             assertFalse(Files.exists(root.resolve("escaped.txt")));
+            Thread.sleep(150L);
+            assertEquals(1, listener.getFailureCount());
         } finally {
+            source.close();
+        }
+    }
+
+    @Test
+    public void doesNotPublishUnchangedProcessedArchiveAgain() throws Exception {
+        Path root = temporaryFolder.newFolder("unchanged-revision").toPath();
+        Path archive = root.resolve("project.zip");
+        writeZip(archive, "Demo/data/Project.json", "{}");
+
+        CapturingListener listener = new CapturingListener();
+        PollingZipProjectRevisionSource source = createSource(root, archive);
+        try {
+            source.start(listener);
+            assertTrue(listener.awaitRevision());
+            Thread.sleep(150L);
+
+            assertEquals(1, listener.getRevisionCount());
+        } finally {
+            ProjectRevision revision = listener.getRevision();
+            if (revision != null) {
+                revision.close();
+            }
             source.close();
         }
     }
@@ -142,16 +169,20 @@ public class PollingZipProjectRevisionSourceTest {
         private final CountDownLatch failureLatch = new CountDownLatch(1);
         private final AtomicReference<ProjectRevision> revision = new AtomicReference<>();
         private final AtomicReference<ProjectRevisionFailure> failure = new AtomicReference<>();
+        private final AtomicInteger revisionCount = new AtomicInteger();
+        private final AtomicInteger failureCount = new AtomicInteger();
 
         @Override
         public void onRevisionAvailable(ProjectRevision value) {
             revision.set(value);
+            revisionCount.incrementAndGet();
             revisionLatch.countDown();
         }
 
         @Override
         public void onRevisionRejected(ProjectRevisionFailure value) {
             failure.set(value);
+            failureCount.incrementAndGet();
             failureLatch.countDown();
         }
 
@@ -169,6 +200,14 @@ public class PollingZipProjectRevisionSourceTest {
 
         private ProjectRevisionFailure getFailure() {
             return failure.get();
+        }
+
+        private int getRevisionCount() {
+            return revisionCount.get();
+        }
+
+        private int getFailureCount() {
+            return failureCount.get();
         }
     }
 }
