@@ -13,6 +13,7 @@ import io.github.byzatic.lib.configio.infrastructure.dto.raw.node.pipeline.Pipel
 import io.github.byzatic.lib.configio.infrastructure.dto.raw.project_and_graph.Project;
 import io.github.byzatic.lib.configio.infrastructure.strategy.NodePathResolverStrategy;
 import io.github.byzatic.lib.configio.infrastructure.util.GsonJsonFileReaderUtility;
+import io.github.byzatic.lib.configio.support.TestProjectFixture;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -38,11 +39,11 @@ public class ProjectV1SaverStrategyTest {
     public void shouldSaveProjectThatCanBeLoadedAgain() throws Exception {
         ProjectLoaderInterface loader = ProjectV1LoaderFactory.create();
         ProjectSaverInterface saver = ProjectV1SaverFactory.create();
-        Path sourceDirectory = Path.of(".develop", "MyAwsomeProject");
         Path testDirectory = Files.createTempDirectory("project-v1-saver-test-");
         Path targetDirectory = testDirectory.resolve("saved-project");
 
-        try {
+        try (TestProjectFixture fixture = TestProjectFixture.create()) {
+            Path sourceDirectory = fixture.getProjectDirectory();
             try (ProjectLoadResultDataObject source = loader.load(sourceDirectory)) {
                 Path archive = saver.save(
                         targetDirectory,
@@ -66,25 +67,13 @@ public class ProjectV1SaverStrategyTest {
     public void shouldSaveModuleAndServiceJarsBeforeCreatingArchive() throws Exception {
         ProjectLoaderInterface loader = ProjectV1LoaderFactory.create();
         ProjectSaverInterface saver = ProjectV1SaverFactory.create();
-        Path sourceDirectory = Path.of(".develop", "MyAwsomeProject");
-        Path moduleJar = sourceDirectory.resolve(
-                Path.of(
-                        "modules",
-                        "workflow_routines",
-                        "workflowroutine-get-data-0.0.1-jar-with-dependencies.jar"
-                )
-        );
-        Path serviceJar = sourceDirectory.resolve(
-                Path.of(
-                        "modules",
-                        "services",
-                        "service-prometheus-export-0.0.1-jar-with-dependencies.jar"
-                )
-        );
         Path testDirectory = Files.createTempDirectory("project-v1-plugin-saver-test-");
         Path targetDirectory = testDirectory.resolve("assembled-project");
 
-        try {
+        try (TestProjectFixture fixture = TestProjectFixture.create()) {
+            Path sourceDirectory = fixture.getProjectDirectory();
+            Path moduleJar = fixture.getModuleJar();
+            Path serviceJar = fixture.getServiceJar();
             try (ProjectLoadResultDataObject source = loader.load(sourceDirectory)) {
                 Path archive = saver.save(
                         targetDirectory,

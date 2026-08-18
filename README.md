@@ -1,4 +1,4 @@
-# lib-tessera-dfe-config-io
+# Lib-Tessera-DFE-Project-IO
 
 Java-библиотека ввода-вывода конфигурации проектов Tessera DFE. Она читает и записывает проект формата `v1.0.0-SingleRootStrictNestedNodeTree`, упаковывает проект в ZIP, загружает JAR-модули и сервисы через Java SPI и умеет отслеживать новые ревизии проекта в ZIP-архиве.
 
@@ -21,12 +21,12 @@ Java-библиотека ввода-вывода конфигурации пр�
 ```xml
 <dependency>
     <groupId>io.github.byzatic</groupId>
-    <artifactId>lib-tessera-dfe-config-io</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <artifactId>lib-tessera-dfe-project-io</artifactId>
+    <version>0.0.1</version>
 </dependency>
 ```
 
-Для установки snapshot-версии в локальный Maven-репозиторий:
+Для установки библиотеки в локальный Maven-репозиторий:
 
 ```shell
 mvn install -DskipTests -Dgpg.skip=true
