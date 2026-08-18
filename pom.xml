@@ -6,8 +6,12 @@
 
     <groupId>io.github.byzatic</groupId>
     <artifactId>lib-tessera-dfe-config-io</artifactId>
-    <version>1.0-SNAPSHOT</version>
-    <description>...</description>
+    <!--<version>0.0.1-SNAPSHOT</version>-->
+    <version>0.0.1</version>
+    <packaging>pom</packaging>
+
+    <name>Lib-Tessera-DFE-Config-IO</name>
+    <description>A library for working with Tessera DFE projects</description>
     <url>https://github.com/byzatic/lib-tessera-dfe-config-io</url>
 
     <licenses>
@@ -74,12 +78,14 @@
             <version>${version.java_byzatic_commons}</version>
         </dependency>
 
+        <!-- https://central.sonatype.com/artifact/io.github.byzatic/tessera-service-lib -->
         <dependency>
             <groupId>io.github.byzatic</groupId>
             <artifactId>tessera-service-lib</artifactId>
             <version>${version.tessera_workflow_toolkit}</version>
         </dependency>
 
+        <!-- https://central.sonatype.com/artifact/io.github.byzatic/tessera-workflowroutine-lib -->
         <dependency>
             <groupId>io.github.byzatic</groupId>
             <artifactId>tessera-workflowroutine-lib</artifactId>
@@ -310,7 +316,7 @@
             <plugin>
                 <groupId>org.sonatype.central</groupId>
                 <artifactId>central-publishing-maven-plugin</artifactId>
-                <version>0.8.0</version>
+                <version>0.9.0</version>
                 <extensions>true</extensions>
                 <configuration>
                     <publishingServerId>central</publishingServerId>
