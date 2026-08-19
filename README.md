@@ -87,6 +87,22 @@ Path archive = saver.save(
 
 Также доступны перегрузки `save(ProjectLoadResultDataObject)` и `save(...)` без JAR-файлов.
 
+Для пользовательского экспорта только в ZIP используйте `ProjectV1ExporterFactory`. Экспортёр
+сам создаёт и удаляет временный каталог, записывает DSL-файлы с фиксированным расширением
+`.mcg3dsl` и оставляет только архив в указанном месте:
+
+```java
+ProjectExporterInterface exporter = ProjectV1ExporterFactory.create();
+Path archive = exporter.export(new ProjectExportDataObject(
+        Path.of("delivery/MyProject.zip"),
+        projectGlobal,
+        nodeContainer,
+        moduleJars,
+        serviceJars,
+        List.of(new DslFileDataObject(nodeReference, "worker-id", dslContent))
+));
+```
+
 ## Формат каталога проекта
 
 ```text
@@ -97,7 +113,9 @@ MyProject/
 │   └── nodes/
 │       └── <id>-<name>/
 │           ├── global.json
-│           └── pipeline.json
+│           ├── pipeline.json
+│           └── configuration_files/
+│               └── <name>.mcg3dsl
 └── modules/
     ├── shared/
     ├── workflow_routines/
@@ -113,7 +131,9 @@ MyProject/
 | Интерфейс | Назначение | Основные методы |
 |---|---|---|
 | `ProjectLoaderInterface` | Загрузка проекта из каталога | `load(Path)` |
-| `ProjectSaverInterface` | Запись проекта и создание ZIP | четыре перегрузки `save(...)` |
+| `ProjectSaverInterface` | Запись проекта и создание ZIP | перегрузки `save(...)`, включая DSL-файлы |
+| `ProjectExporterInterface` | Экспорт проекта только в целевой ZIP | `export(ProjectExportDataObject)` |
+| `DslFileSaverInterface` | Запись `.mcg3dsl` перед архивацией | `save(...)` |
 | `ProjectArchiverInterface` | Архивация готового каталога | `archive(Path)` |
 | `ModuleLoaderInterface` | Поиск и создание workflow-модулей | `getAvailableModuleNames()`, `getModule(...)`, `close()` |
 | `ModuleSaverInterface` | Копирование JAR модуля | `save(moduleJar, projectDirectory)` |
@@ -132,7 +152,7 @@ MyProject/
 | `PipelineDaoInterface` | `pipeline.json` каждого узла |
 | `SharedResourcesDaoInterface` | JAR-файлы из `modules/shared` |
 
-Стандартные реализации создаются фабриками `ProjectV1LoaderFactory`, `ProjectV1SaverFactory`, `ModuleLoaderFactory`, `ModuleSaverFactory`, `ServiceLoaderFactory`, `ServiceSaverFactory` и `ProjectRevisionSourceFactory`.
+Стандартные реализации создаются фабриками `ProjectV1LoaderFactory`, `ProjectV1SaverFactory`, `ProjectV1ExporterFactory`, `ModuleLoaderFactory`, `ModuleSaverFactory`, `ServiceLoaderFactory`, `ServiceSaverFactory` и `ProjectRevisionSourceFactory`.
 
 ## Основные классы
 
@@ -140,6 +160,8 @@ MyProject/
 |---|---|
 | `ProjectV1LoaderStrategy` | Координирует DAO, проверяет каталог и поддерживаемую версию, собирает `ProjectLoadResultDataObject` |
 | `ProjectV1SaverStrategy` | Валидирует модель, записывает все части проекта, добавляет JAR и запускает архивацию |
+| `ProjectV1ExporterStrategy` | Собирает проект во временном каталоге и переносит только готовый ZIP в целевой путь |
+| `DslFileSaverStrategy` | Записывает содержимое DSL в `configuration_files/*.mcg3dsl` до архивации |
 | `GsonProjectDao` | Читает и пишет `data/Project.json` |
 | `GsonProjectGlobalDao` | Читает и пишет `data/Global.json` |
 | `GsonNodeGlobalDao` | Читает и пишет `global.json` узлов |

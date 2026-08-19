@@ -12,6 +12,7 @@ import io.github.byzatic.lib.configio.domain.model.NodeContainerDataObject;
 import io.github.byzatic.lib.configio.domain.model.ProjectGlobalDataObject;
 import io.github.byzatic.lib.configio.domain.model.ProjectLoadResultDataObject;
 import io.github.byzatic.lib.configio.domain.model.ProjectStructureDataObject;
+import io.github.byzatic.lib.configio.domain.model.DslFileDataObject;
 
 import java.nio.file.Path;
 import java.util.Collections;
@@ -29,6 +30,7 @@ public final class ProjectV1SaverStrategy implements ProjectSaverInterface {
     private final PipelineDaoInterface pipelineDao;
     private final ModuleSaverInterface moduleSaver;
     private final ServiceSaverInterface serviceSaver;
+    private final DslFileSaverInterface dslFileSaver;
     private final ProjectArchiverInterface projectArchiver;
 
     public ProjectV1SaverStrategy(
@@ -38,6 +40,7 @@ public final class ProjectV1SaverStrategy implements ProjectSaverInterface {
             PipelineDaoInterface pipelineDao,
             ModuleSaverInterface moduleSaver,
             ServiceSaverInterface serviceSaver,
+            DslFileSaverInterface dslFileSaver,
             ProjectArchiverInterface projectArchiver
     ) {
         this.projectDao = Objects.requireNonNull(projectDao, "projectDao");
@@ -46,6 +49,7 @@ public final class ProjectV1SaverStrategy implements ProjectSaverInterface {
         this.pipelineDao = Objects.requireNonNull(pipelineDao, "pipelineDao");
         this.moduleSaver = Objects.requireNonNull(moduleSaver, "moduleSaver");
         this.serviceSaver = Objects.requireNonNull(serviceSaver, "serviceSaver");
+        this.dslFileSaver = Objects.requireNonNull(dslFileSaver, "dslFileSaver");
         this.projectArchiver = Objects.requireNonNull(projectArchiver, "projectArchiver");
     }
 
@@ -95,6 +99,19 @@ public final class ProjectV1SaverStrategy implements ProjectSaverInterface {
             List<Path> moduleJars,
             List<Path> serviceJars
     ) throws ProjectSavingException {
+        return save(projectDirectory, global, nodeContainer, moduleJars, serviceJars,
+                Collections.<DslFileDataObject>emptyList());
+    }
+
+    @Override
+    public Path save(
+            Path projectDirectory,
+            ProjectGlobalDataObject global,
+            NodeContainerDataObject nodeContainer,
+            List<Path> moduleJars,
+            List<Path> serviceJars,
+            List<DslFileDataObject> dslFiles
+    ) throws ProjectSavingException {
         Path normalizedProjectDirectory = normalizeProjectDirectory(projectDirectory);
         if (global == null) {
             throw new ProjectSavingException("Project global configuration must not be null");
@@ -103,6 +120,9 @@ public final class ProjectV1SaverStrategy implements ProjectSaverInterface {
             throw new ProjectSavingException("Node container must not be null");
         }
         validateJarLists(moduleJars, serviceJars);
+        if (dslFiles == null) {
+            throw new ProjectSavingException("DSL file list must not be null");
+        }
 
         ProjectStructureDataObject projectStructure = nodeContainer.getProjectStructure();
         validateVersion(projectStructure);
@@ -122,6 +142,7 @@ public final class ProjectV1SaverStrategy implements ProjectSaverInterface {
             );
             saveModules(moduleJars, normalizedProjectDirectory);
             saveServices(serviceJars, normalizedProjectDirectory);
+            dslFileSaver.save(normalizedProjectDirectory, nodeContainer, dslFiles);
             return projectArchiver.archive(normalizedProjectDirectory);
         } catch (ProjectSavingException exception) {
             throw exception;
