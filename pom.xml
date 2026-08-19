@@ -6,7 +6,7 @@
 
     <groupId>io.github.byzatic</groupId>
     <artifactId>lib-tessera-dfe-project-io</artifactId>
-    <version>0.0.2-SNAPSHOT</version>
+    <version>0.0.2</version>
 
     <name>Lib-Tessera-DFE-Project-IO</name>
     <description>A library for working with Tessera DFE projects</description>
