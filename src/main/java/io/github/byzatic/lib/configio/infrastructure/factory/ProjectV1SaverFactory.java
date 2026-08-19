@@ -9,6 +9,7 @@ import io.github.byzatic.lib.configio.infrastructure.dao.GsonProjectGlobalDao;
 import io.github.byzatic.lib.configio.infrastructure.saver.ModuleSaverStrategy;
 import io.github.byzatic.lib.configio.infrastructure.saver.ServiceSaverStrategy;
 import io.github.byzatic.lib.configio.infrastructure.saver.ZipProjectArchiverStrategy;
+import io.github.byzatic.lib.configio.infrastructure.saver.DslFileSaverStrategy;
 
 public final class ProjectV1SaverFactory {
 
@@ -23,6 +24,7 @@ public final class ProjectV1SaverFactory {
                 new GsonPipelineDao(),
                 new ModuleSaverStrategy(),
                 new ServiceSaverStrategy(),
+                new DslFileSaverStrategy(),
                 new ZipProjectArchiverStrategy()
         );
     }
