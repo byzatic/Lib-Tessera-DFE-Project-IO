@@ -1,5 +1,9 @@
 package io.github.byzatic.lib.configio.support;
 
+import io.github.cherepavel.tessera.configurator.routine.spi.BduiWidgetIds;
+import io.github.cherepavel.tessera.configurator.routine.spi.RoutineEditorDescriptor;
+import io.github.cherepavel.tessera.configurator.routine.spi.RoutineEditorDescriptorProvider;
+import io.github.cherepavel.tessera.configurator.routine.spi.RoutineFunctionDescriptor;
 import io.github.byzatic.tessera.service.api_engine.MCg3ServiceApiInterface;
 import io.github.byzatic.tessera.service.service.ServiceFactoryInterface;
 import io.github.byzatic.tessera.service.service.ServiceInterface;
@@ -15,8 +19,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.List;
+import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
+import java.util.jar.Manifest;
 
 public final class TestProjectFixture implements AutoCloseable {
 
@@ -25,6 +32,9 @@ public final class TestProjectFixture implements AutoCloseable {
                     + "WorkflowRoutineFactoryInterface";
     private static final String SERVICE_FACTORY_INTERFACE =
             "io.github.byzatic.tessera.service.service.ServiceFactoryInterface";
+    private static final String ROUTINE_EDITOR_DESCRIPTOR_PROVIDER_INTERFACE =
+            "io.github.cherepavel.tessera.configurator.routine.spi."
+                    + "RoutineEditorDescriptorProvider";
 
     private final Path projectDirectory;
     private final Path moduleJar;
@@ -58,13 +68,15 @@ public final class TestProjectFixture implements AutoCloseable {
         Files.writeString(nodeDirectory.resolve("pipeline.json"), pipelineJson());
 
         Path moduleJar = modulesDirectory.resolve("test-workflow-routines.jar");
-        createServiceProviderJar(
+        createModuleProviderJar(
                 moduleJar,
-                MODULE_FACTORY_INTERFACE,
-                GetDataWorkflowRoutineFactory.class,
-                ProcessingStatusWorkflowRoutineFactory.class,
-                DataEnrichmentWorkflowRoutineFactory.class,
-                GraphLiftingDataWorkflowRoutineFactory.class
+                new Class<?>[]{
+                        GetDataWorkflowRoutineFactory.class,
+                        ProcessingStatusWorkflowRoutineFactory.class,
+                        DataEnrichmentWorkflowRoutineFactory.class,
+                        GraphLiftingDataWorkflowRoutineFactory.class
+                },
+                DataEnrichmentEditorDescriptorProvider.class
         );
         Path serviceJar = servicesDirectory.resolve("test-services.jar");
         createServiceProviderJar(
@@ -90,6 +102,15 @@ public final class TestProjectFixture implements AutoCloseable {
 
     public Path getServiceJar() {
         return serviceJar;
+    }
+
+    public Path addDuplicateRoutineMetadataJar() throws IOException {
+        Path duplicateJar = moduleJar.getParent().resolve("duplicate-routine-metadata.jar");
+        createMetadataProviderJar(
+                duplicateJar,
+                DuplicateDataEnrichmentEditorDescriptorProvider.class
+        );
+        return duplicateJar;
     }
 
     @Override
@@ -119,16 +140,62 @@ public final class TestProjectFixture implements AutoCloseable {
             String serviceInterface,
             Class<?>... providerClasses
     ) throws IOException {
+        try (JarOutputStream output = new JarOutputStream(Files.newOutputStream(jarFile))) {
+            writeServiceEntry(output, serviceInterface, providerClasses);
+        }
+    }
+
+    private static void createModuleProviderJar(
+            Path jarFile,
+            Class<?>[] moduleFactories,
+            Class<?>... metadataProviders
+    ) throws IOException {
+        Manifest manifest = new Manifest();
+        manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0");
+        manifest.getMainAttributes().put(Attributes.Name.IMPLEMENTATION_VERSION, "1.2.3");
+        try (JarOutputStream output = new JarOutputStream(
+                Files.newOutputStream(jarFile),
+                manifest
+        )) {
+            writeServiceEntry(output, MODULE_FACTORY_INTERFACE, moduleFactories);
+            writeServiceEntry(
+                    output,
+                    ROUTINE_EDITOR_DESCRIPTOR_PROVIDER_INTERFACE,
+                    metadataProviders
+            );
+        }
+    }
+
+    private static void createMetadataProviderJar(
+            Path jarFile,
+            Class<?>... metadataProviders
+    ) throws IOException {
+        Manifest manifest = new Manifest();
+        manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0");
+        try (JarOutputStream output = new JarOutputStream(
+                Files.newOutputStream(jarFile),
+                manifest
+        )) {
+            writeServiceEntry(
+                    output,
+                    ROUTINE_EDITOR_DESCRIPTOR_PROVIDER_INTERFACE,
+                    metadataProviders
+            );
+        }
+    }
+
+    private static void writeServiceEntry(
+            JarOutputStream output,
+            String serviceInterface,
+            Class<?>... providerClasses
+    ) throws IOException {
         StringBuilder providers = new StringBuilder();
         for (Class<?> providerClass : providerClasses) {
             providers.append(providerClass.getName()).append('\n');
         }
-
-        try (JarOutputStream output = new JarOutputStream(Files.newOutputStream(jarFile))) {
-            output.putNextEntry(new JarEntry("META-INF/services/" + serviceInterface));
-            output.write(providers.toString().getBytes(StandardCharsets.UTF_8));
-            output.closeEntry();
-        }
+        output.putNextEntry(new JarEntry("META-INF/services/" + serviceInterface));
+        output.write(providers.toString().getBytes(StandardCharsets.UTF_8));
+        output.closeEntry();
     }
 
     private static String projectJson() {
@@ -233,6 +300,44 @@ public final class TestProjectFixture implements AutoCloseable {
                         healthFlagProxy
         ) {
             return null;
+        }
+    }
+
+    public static final class DataEnrichmentEditorDescriptorProvider
+            implements RoutineEditorDescriptorProvider {
+
+        @Override
+        public RoutineEditorDescriptor getDescriptor() {
+            RoutineFunctionDescriptor function = RoutineFunctionDescriptor.newBuilder()
+                    .functionId("AddLabel")
+                    .displayName("Add Label")
+                    .description("Adds or replaces labels on a metric.")
+                    .bduiWidgetIds(List.of(
+                            BduiWidgetIds.FUNC_ENV,
+                            BduiWidgetIds.FUNC_INPUT_DATA,
+                            BduiWidgetIds.FUNC_OUTPUT_DATA
+                    ))
+                    .argumentIds(List.of("DataId"))
+                    .build();
+            return RoutineEditorDescriptor.newBuilder()
+                    .routineId("DataEnrichmentWorkflowRoutine")
+                    .displayName("Data Enrichment")
+                    .description("Enriches metric data with labels and graph context.")
+                    .functions(List.of(function))
+                    .build();
+        }
+    }
+
+    public static final class DuplicateDataEnrichmentEditorDescriptorProvider
+            implements RoutineEditorDescriptorProvider {
+
+        @Override
+        public RoutineEditorDescriptor getDescriptor() {
+            return RoutineEditorDescriptor.newBuilder()
+                    .routineId("DataEnrichmentWorkflowRoutine")
+                    .displayName("Duplicate Data Enrichment")
+                    .functions(List.of())
+                    .build();
         }
     }
 
