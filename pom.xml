@@ -6,7 +6,7 @@
 
     <groupId>io.github.byzatic</groupId>
     <artifactId>lib-tessera-dfe-project-io</artifactId>
-    <version>0.0.2</version>
+    <version>0.0.3</version>
 
     <name>Lib-Tessera-DFE-Project-IO</name>
     <description>A library for working with Tessera DFE projects</description>
@@ -198,6 +198,10 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
                 <version>3.6.3</version>
+                <configuration>
+                    <!-- Keep Javadoc validation while allowing undocumented internal implementation classes. -->
+                    <doclint>all,-missing</doclint>
+                </configuration>
                 <executions>
                     <execution>
                         <id>attach-javadocs</id>
