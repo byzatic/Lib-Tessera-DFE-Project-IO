@@ -4,8 +4,8 @@ import io.github.byzatic.lib.configio.application.module.RoutineEditorMetadataLo
 import io.github.byzatic.lib.configio.domain.exception.PluginLoadingException;
 import io.github.byzatic.lib.configio.domain.model.RoutineEditorMetadataDataObject;
 import io.github.byzatic.lib.configio.infrastructure.utils.ClassLoaderCloserUtility;
-import io.github.cherepavel.tessera.configurator.routine.spi.RoutineEditorDescriptor;
-import io.github.cherepavel.tessera.configurator.routine.spi.RoutineEditorDescriptorProvider;
+import io.github.byzatic.lib.configio.routine_spi.RoutineEditorDescriptor;
+import io.github.byzatic.lib.configio.routine_spi.RoutineEditorDescriptorProvider;
 
 import java.io.File;
 import java.io.FilenameFilter;

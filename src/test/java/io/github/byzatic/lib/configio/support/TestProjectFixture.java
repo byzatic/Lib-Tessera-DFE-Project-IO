@@ -1,9 +1,9 @@
 package io.github.byzatic.lib.configio.support;
 
-import io.github.cherepavel.tessera.configurator.routine.spi.BduiWidgetIds;
-import io.github.cherepavel.tessera.configurator.routine.spi.RoutineEditorDescriptor;
-import io.github.cherepavel.tessera.configurator.routine.spi.RoutineEditorDescriptorProvider;
-import io.github.cherepavel.tessera.configurator.routine.spi.RoutineFunctionDescriptor;
+import io.github.byzatic.lib.configio.routine_spi.BduiWidgetIds;
+import io.github.byzatic.lib.configio.routine_spi.RoutineEditorDescriptor;
+import io.github.byzatic.lib.configio.routine_spi.RoutineEditorDescriptorProvider;
+import io.github.byzatic.lib.configio.routine_spi.RoutineFunctionDescriptor;
 import io.github.byzatic.tessera.service.api_engine.MCg3ServiceApiInterface;
 import io.github.byzatic.tessera.service.service.ServiceFactoryInterface;
 import io.github.byzatic.tessera.service.service.ServiceInterface;

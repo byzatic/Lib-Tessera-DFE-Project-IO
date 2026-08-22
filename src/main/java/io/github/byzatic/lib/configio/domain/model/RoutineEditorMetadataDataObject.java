@@ -1,6 +1,6 @@
 package io.github.byzatic.lib.configio.domain.model;
 
-import io.github.cherepavel.tessera.configurator.routine.spi.RoutineEditorDescriptor;
+import io.github.byzatic.lib.configio.routine_spi.RoutineEditorDescriptor;
 
 import java.nio.file.Path;
 import java.util.Objects;

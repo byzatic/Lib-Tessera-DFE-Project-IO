@@ -269,7 +269,7 @@ try (RoutineEditorMetadataLoaderInterface metadataLoader =
 Публичный JDK-only SPI находится в пакете `io.github.cherepavel.tessera.configurator.routine.spi`. Реализация провайдера должна иметь публичный конструктор без аргументов и регистрацию:
 
 ```text
-META-INF/services/io.github.cherepavel.tessera.configurator.routine.spi.RoutineEditorDescriptorProvider
+META-INF/services/io.github.byzatic.lib.configio.routine_spi.RoutineEditorDescriptorProvider
 ```
 
 ## Отслеживание ревизий ZIP

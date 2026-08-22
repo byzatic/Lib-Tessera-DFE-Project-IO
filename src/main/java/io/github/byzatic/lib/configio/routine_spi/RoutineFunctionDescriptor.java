@@ -1,4 +1,4 @@
-package io.github.cherepavel.tessera.configurator.routine.spi;
+package io.github.byzatic.lib.configio.routine_spi;
 
 import java.util.List;
 import java.util.Objects;
