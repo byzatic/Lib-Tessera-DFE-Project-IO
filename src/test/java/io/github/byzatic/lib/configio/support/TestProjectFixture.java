@@ -4,6 +4,11 @@ import io.github.byzatic.lib.configio.routine_spi.BduiWidgetIds;
 import io.github.byzatic.lib.configio.routine_spi.RoutineEditorDescriptor;
 import io.github.byzatic.lib.configio.routine_spi.RoutineEditorDescriptorProvider;
 import io.github.byzatic.lib.configio.routine_spi.RoutineFunctionDescriptor;
+import io.github.byzatic.lib.configio.service_spi.ServiceEditorDescriptor;
+import io.github.byzatic.lib.configio.service_spi.ServiceEditorDescriptorProvider;
+import io.github.byzatic.lib.configio.service_spi.ServiceParameterDescriptor;
+import io.github.byzatic.lib.configio.service_spi.ServiceParameterType;
+import io.github.byzatic.lib.configio.service_spi.ServiceStorageRole;
 import io.github.byzatic.tessera.service.api_engine.MCg3ServiceApiInterface;
 import io.github.byzatic.tessera.service.service.ServiceFactoryInterface;
 import io.github.byzatic.tessera.service.service.ServiceInterface;
@@ -35,6 +40,9 @@ public final class TestProjectFixture implements AutoCloseable {
     private static final String ROUTINE_EDITOR_DESCRIPTOR_PROVIDER_INTERFACE =
             "io.github.byzatic.lib.configio.routine_spi."
                     + "RoutineEditorDescriptorProvider";
+    private static final String SERVICE_EDITOR_DESCRIPTOR_PROVIDER_INTERFACE =
+            "io.github.byzatic.lib.configio.service_spi."
+                    + "ServiceEditorDescriptorProvider";
 
     private final Path projectDirectory;
     private final Path moduleJar;
@@ -81,8 +89,8 @@ public final class TestProjectFixture implements AutoCloseable {
         Path serviceJar = servicesDirectory.resolve("test-services.jar");
         createServiceProviderJar(
                 serviceJar,
-                SERVICE_FACTORY_INTERFACE,
-                PrometheusExportServiceFactory.class
+                new Class<?>[]{PrometheusExportServiceFactory.class},
+                PrometheusExportEditorDescriptorProvider.class
         );
 
         // The directory is intentionally empty; its existence is part of the project format.
@@ -113,6 +121,15 @@ public final class TestProjectFixture implements AutoCloseable {
         return duplicateJar;
     }
 
+    public Path addDuplicateServiceMetadataJar() throws IOException {
+        Path duplicateJar = serviceJar.getParent().resolve("duplicate-service-metadata.jar");
+        createServiceMetadataProviderJar(
+                duplicateJar,
+                DuplicatePrometheusExportEditorDescriptorProvider.class
+        );
+        return duplicateJar;
+    }
+
     @Override
     public void close() throws IOException {
         Files.walkFileTree(projectDirectory, new SimpleFileVisitor<Path>() {
@@ -137,11 +154,40 @@ public final class TestProjectFixture implements AutoCloseable {
 
     private static void createServiceProviderJar(
             Path jarFile,
-            String serviceInterface,
-            Class<?>... providerClasses
+            Class<?>[] serviceFactories,
+            Class<?>... metadataProviders
     ) throws IOException {
-        try (JarOutputStream output = new JarOutputStream(Files.newOutputStream(jarFile))) {
-            writeServiceEntry(output, serviceInterface, providerClasses);
+        Manifest manifest = new Manifest();
+        manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0");
+        manifest.getMainAttributes().put(Attributes.Name.IMPLEMENTATION_VERSION, "2.4.0");
+        try (JarOutputStream output = new JarOutputStream(
+                Files.newOutputStream(jarFile),
+                manifest
+        )) {
+            writeServiceEntry(output, SERVICE_FACTORY_INTERFACE, serviceFactories);
+            writeServiceEntry(
+                    output,
+                    SERVICE_EDITOR_DESCRIPTOR_PROVIDER_INTERFACE,
+                    metadataProviders
+            );
+        }
+    }
+
+    private static void createServiceMetadataProviderJar(
+            Path jarFile,
+            Class<?>... metadataProviders
+    ) throws IOException {
+        Manifest manifest = new Manifest();
+        manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0");
+        try (JarOutputStream output = new JarOutputStream(
+                Files.newOutputStream(jarFile),
+                manifest
+        )) {
+            writeServiceEntry(
+                    output,
+                    SERVICE_EDITOR_DESCRIPTOR_PROVIDER_INTERFACE,
+                    metadataProviders
+            );
         }
     }
 
@@ -350,6 +396,53 @@ public final class TestProjectFixture implements AutoCloseable {
                 HealthFlagProxy healthFlagProxy
         ) {
             return null;
+        }
+    }
+
+    public static final class PrometheusExportEditorDescriptorProvider
+            implements ServiceEditorDescriptorProvider {
+
+        @Override
+        public ServiceEditorDescriptor getDescriptor() {
+            ServiceParameterDescriptor inputStorage =
+                    ServiceParameterDescriptor.newBuilder()
+                            .parameterId("inputStorage")
+                            .displayName("Input storage")
+                            .description("Storage containing metrics to export.")
+                            .storageRole(ServiceStorageRole.INPUT)
+                            .build();
+            ServiceParameterDescriptor protocol =
+                    ServiceParameterDescriptor.newBuilder()
+                            .parameterId("protocol")
+                            .displayName("Protocol")
+                            .type(ServiceParameterType.SELECT)
+                            .defaultValue("HTTP")
+                            .selectOptions(List.of("HTTP", "HTTPS"))
+                            .build();
+            ServiceParameterDescriptor outputStorage =
+                    ServiceParameterDescriptor.newBuilder()
+                            .parameterId("outputStorage")
+                            .displayName("Output storage")
+                            .storageRole(ServiceStorageRole.OUTPUT)
+                            .build();
+            return ServiceEditorDescriptor.newBuilder()
+                    .serviceId("PrometheusExportService")
+                    .displayName("Prometheus Export")
+                    .description("Exports metrics in Prometheus format.")
+                    .parameters(List.of(inputStorage, protocol, outputStorage))
+                    .build();
+        }
+    }
+
+    public static final class DuplicatePrometheusExportEditorDescriptorProvider
+            implements ServiceEditorDescriptorProvider {
+
+        @Override
+        public ServiceEditorDescriptor getDescriptor() {
+            return ServiceEditorDescriptor.newBuilder()
+                    .serviceId("PrometheusExportService")
+                    .displayName("Duplicate Prometheus Export")
+                    .build();
         }
     }
 }

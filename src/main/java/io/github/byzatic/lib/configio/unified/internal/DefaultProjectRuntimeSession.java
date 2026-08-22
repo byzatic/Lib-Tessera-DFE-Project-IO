@@ -2,11 +2,13 @@ package io.github.byzatic.lib.configio.unified.internal;
 
 import io.github.byzatic.lib.configio.application.module.ModuleLoaderInterface;
 import io.github.byzatic.lib.configio.application.module.RoutineEditorMetadataLoaderInterface;
+import io.github.byzatic.lib.configio.application.service.ServiceEditorMetadataLoaderInterface;
 import io.github.byzatic.lib.configio.application.service.ServiceLoaderInterface;
 import io.github.byzatic.lib.configio.domain.exception.PluginLoadingException;
 import io.github.byzatic.lib.configio.domain.model.ProjectLoadResultDataObject;
 import io.github.byzatic.lib.configio.infrastructure.factory.ModuleLoaderFactory;
 import io.github.byzatic.lib.configio.infrastructure.factory.RoutineEditorMetadataLoaderFactory;
+import io.github.byzatic.lib.configio.infrastructure.factory.ServiceEditorMetadataLoaderFactory;
 import io.github.byzatic.lib.configio.infrastructure.factory.ServiceLoaderFactory;
 import io.github.byzatic.lib.configio.unified.ProjectRuntimeSession;
 import io.github.byzatic.lib.configio.unified.RoutineCreationRequest;
@@ -14,6 +16,7 @@ import io.github.byzatic.lib.configio.unified.ServiceCreationRequest;
 import io.github.byzatic.lib.configio.unified.TesseraProjectException;
 import io.github.byzatic.lib.configio.unified.TesseraProjectOperation;
 import io.github.byzatic.lib.configio.unified.model.RoutineMetadata;
+import io.github.byzatic.lib.configio.unified.model.ServiceMetadata;
 import io.github.byzatic.lib.configio.unified.model.TesseraProject;
 import io.github.byzatic.tessera.service.service.ServiceInterface;
 import io.github.byzatic.tessera.workflowroutine.workflowroutines.WorkflowRoutineInterface;
@@ -30,7 +33,8 @@ final class DefaultProjectRuntimeSession implements ProjectRuntimeSession {
     private final boolean ownsLoadedProject;
     private final ModuleLoaderInterface moduleLoader;
     private final ServiceLoaderInterface serviceLoader;
-    private final RoutineEditorMetadataLoaderInterface metadataLoader;
+    private final RoutineEditorMetadataLoaderInterface routineMetadataLoader;
+    private final ServiceEditorMetadataLoaderInterface serviceMetadataLoader;
     private boolean closed;
 
     private DefaultProjectRuntimeSession(
@@ -39,14 +43,16 @@ final class DefaultProjectRuntimeSession implements ProjectRuntimeSession {
             boolean ownsLoadedProject,
             ModuleLoaderInterface moduleLoader,
             ServiceLoaderInterface serviceLoader,
-            RoutineEditorMetadataLoaderInterface metadataLoader
+            RoutineEditorMetadataLoaderInterface routineMetadataLoader,
+            ServiceEditorMetadataLoaderInterface serviceMetadataLoader
     ) {
         this.loadedProject = loadedProject;
         this.project = project;
         this.ownsLoadedProject = ownsLoadedProject;
         this.moduleLoader = moduleLoader;
         this.serviceLoader = serviceLoader;
-        this.metadataLoader = metadataLoader;
+        this.routineMetadataLoader = routineMetadataLoader;
+        this.serviceMetadataLoader = serviceMetadataLoader;
     }
 
     static DefaultProjectRuntimeSession open(
@@ -59,7 +65,8 @@ final class DefaultProjectRuntimeSession implements ProjectRuntimeSession {
         Path servicesDirectory = projectDirectory.resolve("modules").resolve("services");
         ModuleLoaderInterface moduleLoader = null;
         ServiceLoaderInterface serviceLoader = null;
-        RoutineEditorMetadataLoaderInterface metadataLoader = null;
+        RoutineEditorMetadataLoaderInterface routineMetadataLoader = null;
+        ServiceEditorMetadataLoaderInterface serviceMetadataLoader = null;
         try {
             moduleLoader = ModuleLoaderFactory.create(
                     modulesDirectory,
@@ -69,8 +76,12 @@ final class DefaultProjectRuntimeSession implements ProjectRuntimeSession {
                     servicesDirectory,
                     loadedProject.getSharedResourcesContainer()
             );
-            metadataLoader = RoutineEditorMetadataLoaderFactory.create(
+            routineMetadataLoader = RoutineEditorMetadataLoaderFactory.create(
                     modulesDirectory,
+                    loadedProject.getSharedResourcesContainer()
+            );
+            serviceMetadataLoader = ServiceEditorMetadataLoaderFactory.create(
+                    servicesDirectory,
                     loadedProject.getSharedResourcesContainer()
             );
             return new DefaultProjectRuntimeSession(
@@ -79,13 +90,15 @@ final class DefaultProjectRuntimeSession implements ProjectRuntimeSession {
                     ownsLoadedProject,
                     moduleLoader,
                     serviceLoader,
-                    metadataLoader
+                    routineMetadataLoader,
+                    serviceMetadataLoader
             );
         } catch (Exception failure) {
             closeAfterFailure(
                     moduleLoader,
                     serviceLoader,
-                    metadataLoader,
+                    routineMetadataLoader,
+                    serviceMetadataLoader,
                     ownsLoadedProject ? loadedProject : null,
                     failure
             );
@@ -128,13 +141,31 @@ final class DefaultProjectRuntimeSession implements ProjectRuntimeSession {
         ensureOpen();
         try {
             return new LegacyProjectMapper().toRoutineMetadata(
-                    metadataLoader.getAvailableMetadata()
+                    routineMetadataLoader.getAvailableMetadata()
             );
         } catch (PluginLoadingException exception) {
             throw failure(
                     TesseraProjectOperation.USE_RUNTIME,
                     loadedProject.getProjectDirectory(),
                     "Cannot read routine metadata",
+                    exception
+            );
+        }
+    }
+
+    @Override
+    public synchronized List<ServiceMetadata> getServiceMetadata()
+            throws TesseraProjectException {
+        ensureOpen();
+        try {
+            return new LegacyProjectMapper().toServiceMetadata(
+                    serviceMetadataLoader.getAvailableMetadata()
+            );
+        } catch (PluginLoadingException exception) {
+            throw failure(
+                    TesseraProjectOperation.USE_RUNTIME,
+                    loadedProject.getProjectDirectory(),
+                    "Cannot read service metadata",
                     exception
             );
         }
@@ -200,7 +231,8 @@ final class DefaultProjectRuntimeSession implements ProjectRuntimeSession {
         Exception failure = null;
         failure = close(moduleLoader, failure);
         failure = close(serviceLoader, failure);
-        failure = close(metadataLoader, failure);
+        failure = close(routineMetadataLoader, failure);
+        failure = close(serviceMetadataLoader, failure);
         if (ownsLoadedProject) {
             try {
                 loadedProject.close();
@@ -244,11 +276,13 @@ final class DefaultProjectRuntimeSession implements ProjectRuntimeSession {
     private static void closeAfterFailure(
             ModuleLoaderInterface moduleLoader,
             ServiceLoaderInterface serviceLoader,
-            RoutineEditorMetadataLoaderInterface metadataLoader,
+            RoutineEditorMetadataLoaderInterface routineMetadataLoader,
+            ServiceEditorMetadataLoaderInterface serviceMetadataLoader,
             ProjectLoadResultDataObject loadedProject,
             Throwable failure
     ) {
-        closeAfterFailure(metadataLoader, failure);
+        closeAfterFailure(serviceMetadataLoader, failure);
+        closeAfterFailure(routineMetadataLoader, failure);
         closeAfterFailure(serviceLoader, failure);
         closeAfterFailure(moduleLoader, failure);
         closeAfterFailure(loadedProject, failure);

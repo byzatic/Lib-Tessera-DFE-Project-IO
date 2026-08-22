@@ -6,6 +6,9 @@ import io.github.byzatic.lib.configio.unified.model.ExportProjectRequest;
 import io.github.byzatic.lib.configio.unified.model.NodeId;
 import io.github.byzatic.lib.configio.unified.model.SaveProjectRequest;
 import io.github.byzatic.lib.configio.unified.model.SaveProjectResult;
+import io.github.byzatic.lib.configio.unified.model.ServiceMetadata;
+import io.github.byzatic.lib.configio.unified.model.ServiceParameterType;
+import io.github.byzatic.lib.configio.unified.model.ServiceStorageRole;
 import io.github.byzatic.lib.configio.unified.model.TesseraProject;
 import org.junit.Test;
 
@@ -86,6 +89,25 @@ public class DefaultTesseraProjectIOTest {
                 assertEquals("test-project", runtime.getProject().getName());
                 assertEquals(4, runtime.getAvailableRoutineNames().size());
                 assertEquals(1, runtime.getAvailableServiceNames().size());
+                assertEquals(1, runtime.getServiceMetadata().size());
+                ServiceMetadata service = runtime.getServiceMetadata().get(0);
+                assertEquals("PrometheusExportService", service.getId());
+                assertEquals("Prometheus Export", service.getDisplayName());
+                assertEquals("2.4.0", service.getVersion());
+                assertEquals(3, service.getParameters().size());
+                assertEquals(
+                        ServiceStorageRole.INPUT,
+                        service.getParameters().get(0).getStorageRole()
+                );
+                assertEquals(
+                        ServiceParameterType.SELECT,
+                        service.getParameters().get(1).getType()
+                );
+                assertEquals("HTTP", service.getParameters().get(1).getDefaultValue());
+                assertEquals(
+                        ServiceStorageRole.OUTPUT,
+                        service.getParameters().get(2).getStorageRole()
+                );
                 assertFalse(runtime.isClosed());
             } finally {
                 runtime.close();

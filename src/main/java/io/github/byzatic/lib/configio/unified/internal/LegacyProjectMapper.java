@@ -13,6 +13,7 @@ import io.github.byzatic.lib.configio.domain.model.ProjectGlobalDataObject;
 import io.github.byzatic.lib.configio.domain.model.ProjectLoadResultDataObject;
 import io.github.byzatic.lib.configio.domain.model.ProjectStructureDataObject;
 import io.github.byzatic.lib.configio.domain.model.RoutineEditorMetadataDataObject;
+import io.github.byzatic.lib.configio.domain.model.ServiceEditorMetadataDataObject;
 import io.github.byzatic.lib.configio.domain.model.ServiceDataObject;
 import io.github.byzatic.lib.configio.domain.model.StageConsistencyDataObject;
 import io.github.byzatic.lib.configio.domain.model.StageDescriptionDataObject;
@@ -30,7 +31,11 @@ import io.github.byzatic.lib.configio.unified.model.ProjectNode;
 import io.github.byzatic.lib.configio.unified.model.RoutineFunction;
 import io.github.byzatic.lib.configio.unified.model.RoutineMetadata;
 import io.github.byzatic.lib.configio.unified.model.ServiceDefinition;
+import io.github.byzatic.lib.configio.unified.model.ServiceMetadata;
 import io.github.byzatic.lib.configio.unified.model.ServiceOption;
+import io.github.byzatic.lib.configio.unified.model.ServiceParameterMetadata;
+import io.github.byzatic.lib.configio.unified.model.ServiceParameterType;
+import io.github.byzatic.lib.configio.unified.model.ServiceStorageRole;
 import io.github.byzatic.lib.configio.unified.model.StorageDefinition;
 import io.github.byzatic.lib.configio.unified.model.StorageOption;
 import io.github.byzatic.lib.configio.unified.model.TesseraProject;
@@ -154,6 +159,33 @@ final class LegacyProjectMapper {
                 .artifact(metadata.getArtifact())
                 .functions(metadata.getDescriptor().getFunctions().stream()
                         .map(this::mapRoutineFunction).toList())
+                .build()).toList();
+    }
+
+    List<ServiceMetadata> toServiceMetadata(
+            List<ServiceEditorMetadataDataObject> source
+    ) {
+        return source.stream().map(metadata -> ServiceMetadata.newBuilder()
+                .id(metadata.getServiceId())
+                .displayName(metadata.getDescriptor().getDisplayName())
+                .description(text(metadata.getDescriptor().getDescription()))
+                .version(metadata.getVersion())
+                .artifact(metadata.getArtifact())
+                .parameters(metadata.getDescriptor().getParameters().stream()
+                        .map(parameter -> ServiceParameterMetadata.newBuilder()
+                                .id(parameter.getParameterId())
+                                .displayName(parameter.getDisplayName())
+                                .description(text(parameter.getDescription()))
+                                .type(ServiceParameterType.valueOf(
+                                        parameter.getType().name()
+                                ))
+                                .defaultValue(parameter.getDefaultValue())
+                                .selectOptions(parameter.getSelectOptions())
+                                .storageRole(ServiceStorageRole.valueOf(
+                                        parameter.getStorageRole().name()
+                                ))
+                                .build())
+                        .toList())
                 .build()).toList();
     }
 

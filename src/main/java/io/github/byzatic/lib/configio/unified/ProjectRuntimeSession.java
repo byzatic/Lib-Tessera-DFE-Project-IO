@@ -1,6 +1,7 @@
 package io.github.byzatic.lib.configio.unified;
 
 import io.github.byzatic.lib.configio.unified.model.RoutineMetadata;
+import io.github.byzatic.lib.configio.unified.model.ServiceMetadata;
 import io.github.byzatic.lib.configio.unified.model.TesseraProject;
 import io.github.byzatic.tessera.service.service.ServiceInterface;
 import io.github.byzatic.tessera.workflowroutine.workflowroutines.WorkflowRoutineInterface;
@@ -36,6 +37,15 @@ public interface ProjectRuntimeSession extends AutoCloseable {
      * @throws IllegalStateException when the session is closed
      */
     List<RoutineMetadata> getRoutineMetadata() throws TesseraProjectException;
+
+    /**
+     * Returns detached editor metadata published by service JARs.
+     *
+     * @return immutable metadata list, possibly empty
+     * @throws TesseraProjectException when metadata discovery fails
+     * @throws IllegalStateException when the session is closed
+     */
+    List<ServiceMetadata> getServiceMetadata() throws TesseraProjectException;
 
     /**
      * Creates one workflow-routine instance from a discovered factory.

@@ -73,8 +73,15 @@ TesseraProject project = TesseraProject.newBuilder()
 try (ProjectRuntimeSession runtime = projectIO.openRuntime(projectDirectory)) {
     Set<String> routines = runtime.getAvailableRoutineNames();
     Set<String> services = runtime.getAvailableServiceNames();
+    List<RoutineMetadata> routineMetadata = runtime.getRoutineMetadata();
+    List<ServiceMetadata> serviceMetadata = runtime.getServiceMetadata();
 }
 ```
+
+`ServiceMetadata` содержит отображаемое имя, описание, версию и путь service JAR, а также
+immutable-список `ServiceParameterMetadata`. Параметр объявляет тип значения, default,
+варианты `SELECT` и `ServiceStorageRole`, по которому UI отличает выбор входного и выходного
+хранилища от обычного параметра.
 
 Чистая модель `TesseraProject` не содержит class loader и не требует вызова `close()`.
 

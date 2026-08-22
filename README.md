@@ -140,6 +140,7 @@ MyProject/
 | `RoutineEditorMetadataLoaderInterface` | Чтение функций, аргументов и BDUI-виджетов рутин | `getAvailableMetadata()`, `findMetadata(...)`, `close()` |
 | `ModuleSaverInterface` | Копирование JAR модуля | `save(moduleJar, projectDirectory)` |
 | `ServiceLoaderInterface` | Поиск и создание сервисов | `getAvailableServiceNames()`, `getService(...)`, `close()` |
+| `ServiceEditorMetadataLoaderInterface` | Чтение параметров редактора сервисов | `getAvailableMetadata()`, `findMetadata(...)`, `close()` |
 | `ServiceSaverInterface` | Копирование JAR сервиса | `save(serviceJar, projectDirectory)` |
 | `ProjectRevisionSource` | Наблюдение за ZIP и публикация ревизий | `start(listener)`, `close()` |
 | `ProjectRevisionListener` | Получение ревизии либо ошибки подготовки | `onRevisionAvailable(...)`, `onRevisionRejected(...)` |
@@ -154,7 +155,7 @@ MyProject/
 | `PipelineDaoInterface` | `pipeline.json` каждого узла |
 | `SharedResourcesDaoInterface` | JAR-файлы из `modules/shared` |
 
-Стандартные реализации создаются фабриками `ProjectV1LoaderFactory`, `ProjectV1SaverFactory`, `ProjectV1ExporterFactory`, `ModuleLoaderFactory`, `RoutineEditorMetadataLoaderFactory`, `ModuleSaverFactory`, `ServiceLoaderFactory`, `ServiceSaverFactory` и `ProjectRevisionSourceFactory`.
+Стандартные реализации создаются фабриками `ProjectV1LoaderFactory`, `ProjectV1SaverFactory`, `ProjectV1ExporterFactory`, `ModuleLoaderFactory`, `RoutineEditorMetadataLoaderFactory`, `ModuleSaverFactory`, `ServiceLoaderFactory`, `ServiceEditorMetadataLoaderFactory`, `ServiceSaverFactory` и `ProjectRevisionSourceFactory`.
 
 ## Основные классы
 
@@ -171,6 +172,7 @@ MyProject/
 | `UrlClassLoaderSharedResourcesDao` | Загружает отсортированные JAR-файлы из `modules/shared` в последовательную цепочку class loader'ов |
 | `ModuleLoaderStrategy`, `ServiceLoaderStrategy` | Обнаруживают SPI-фабрики и создают экземпляры плагинов |
 | `RoutineEditorMetadataLoaderStrategy` | Загружает SPI-дескрипторы редактора, версию manifest и путь JAR, не создавая runtime-рутину |
+| `ServiceEditorMetadataLoaderStrategy` | Загружает SPI-дескрипторы параметров сервиса, версию manifest и путь JAR, не создавая runtime-сервис |
 | `ModuleSaverStrategy`, `ServiceSaverStrategy` | Копируют JAR в соответствующие каталоги проекта |
 | `ZipProjectArchiverStrategy` | Создаёт ZIP-архив каталога проекта |
 | `PollingZipProjectRevisionSource` | Реализация polling-источника ZIP-ревизий |
@@ -229,7 +231,7 @@ ProjectLoadResultDataObject
 
 ## Загрузка модулей, метаданных редактора и сервисов
 
-JAR-плагины обнаруживаются стандартным Java SPI. JAR модуля должен регистрировать реализацию `WorkflowRoutineFactoryInterface`, а JAR сервиса — `ServiceFactoryInterface` в `META-INF/services/...`. Для интеграции с редактором JAR модуля дополнительно регистрирует `RoutineEditorDescriptorProvider`.
+JAR-плагины обнаруживаются стандартным Java SPI. JAR модуля должен регистрировать реализацию `WorkflowRoutineFactoryInterface`, а JAR сервиса — `ServiceFactoryInterface` в `META-INF/services/...`. Для интеграции с редактором JAR модуля дополнительно регистрирует `RoutineEditorDescriptorProvider`, а JAR сервиса — `ServiceEditorDescriptorProvider`.
 
 ```java
 try (ModuleLoaderInterface modules = ModuleLoaderFactory.create(
@@ -266,10 +268,24 @@ try (RoutineEditorMetadataLoaderInterface metadataLoader =
 
 `RoutineEditorMetadataDataObject` содержит неизменяемый `RoutineEditorDescriptor`, абсолютный путь исходного JAR и `Implementation-Version` из `META-INF/MANIFEST.MF`. Если версия в manifest не задана, возвращается пустая строка. Повторяющийся `routineId` считается ошибкой загрузки.
 
-Публичный JDK-only SPI находится в пакете `io.github.cherepavel.tessera.configurator.routine.spi`. Реализация провайдера должна иметь публичный конструктор без аргументов и регистрацию:
+Сервисы публикуют метаданные симметрично через `ServiceEditorDescriptorProvider`.
+`ServiceEditorDescriptor` объявляет идентификатор, отображаемое имя, описание и параметры.
+Для каждого параметра задаются тип, default, варианты `SELECT` и роль хранилища
+`NONE`, `INPUT` или `OUTPUT`. `ServiceEditorMetadataDataObject` также добавляет абсолютный
+путь JAR и `Implementation-Version`; повторяющийся `serviceId` считается ошибкой загрузки.
+
+Публичный JDK-only SPI находится в пакетах `io.github.byzatic.lib.configio.routine_spi` и
+`io.github.byzatic.lib.configio.service_spi`. Реализация провайдера должна иметь публичный
+конструктор без аргументов и регистрацию:
 
 ```text
 META-INF/services/io.github.byzatic.lib.configio.routine_spi.RoutineEditorDescriptorProvider
+```
+
+Для service JAR используется регистрация:
+
+```text
+META-INF/services/io.github.byzatic.lib.configio.service_spi.ServiceEditorDescriptorProvider
 ```
 
 ## Отслеживание ревизий ZIP
