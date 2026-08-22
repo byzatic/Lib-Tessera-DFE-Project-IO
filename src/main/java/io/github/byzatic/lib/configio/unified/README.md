@@ -97,22 +97,3 @@ factory/strategy и преобразует legacy `*DataObject` в новый а
 
 Остальные классы из `unified.internal` не являются пользовательским API. После принятия
 архитектуры стандартную реализацию можно перенести в окончательный composition-root пакет.
-
-## Последующая интеграция с Tessera-DFE
-
-1. В `TesseraEngineLifecycleManager` заменить прямое создание `ProjectRevisionSource` на
-   `TesseraProjectIO.watchRevisions(...)`.
-2. Перевести `ProjectReloadCoordinator` и `ProjectRuntimeFactory` с legacy `ProjectRevision` на
-   `ProjectRevisionHandle`.
-3. В `DefaultProjectRuntimeFactory` вызывать `revision.openRuntime()` вместо отдельного создания
-   `ModuleLoaderInterface` и `ServiceLoaderInterface`.
-4. Перевести pipeline и service managers на `ProjectRuntimeSession.createRoutine(...)` и
-   `createService(...)`.
-5. Заменить `ProjectConfigurationMapper` mapper’ом из цельного `TesseraProject`. Конфигурация и
-   pipeline уже находятся внутри соответствующего `ProjectNode`, поэтому три параллельные map
-   больше не нужны.
-6. Хранить revision handle в течение всей жизни runtime и закрывать только после остановки
-   runtime. При закрытии handle также освобождается открытая через него runtime session.
-
-После миграции Tessera-DFE compatibility mapper можно перенести за versioned storage adapter,
-а старые factory и interfaces пометить deprecated.
