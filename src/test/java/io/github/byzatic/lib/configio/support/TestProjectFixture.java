@@ -33,7 +33,7 @@ public final class TestProjectFixture implements AutoCloseable {
     private static final String SERVICE_FACTORY_INTERFACE =
             "io.github.byzatic.tessera.service.service.ServiceFactoryInterface";
     private static final String ROUTINE_EDITOR_DESCRIPTOR_PROVIDER_INTERFACE =
-            "io.github.cherepavel.tessera.configurator.routine.spi."
+            "io.github.byzatic.lib.configio.routine_spi."
                     + "RoutineEditorDescriptorProvider";
 
     private final Path projectDirectory;
