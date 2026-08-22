@@ -38,24 +38,33 @@ mvn install -DskipTests -Dgpg.skip=true
 Основная точка входа — `ProjectV1LoaderFactory`. Результат загрузки владеет class loader'ами общих ресурсов, поэтому его необходимо закрывать.
 
 ```java
-import io.github.byzatic.lib.configio.application.loader.ProjectLoaderInterface;
-import io.github.byzatic.lib.configio.domain.model.ProjectLoadResultDataObject;
-import io.github.byzatic.lib.configio.infrastructure.factory.ProjectV1LoaderFactory;
+import loader.application.io.github.byzatic.tessera.lib.configio.ProjectLoaderInterface;
+import model.domain.io.github.byzatic.tessera.lib.configio.ProjectLoadResultDataObject;
+import factory.infrastructure.io.github.byzatic.tessera.lib.configio.ProjectV1LoaderFactory;
 
 import java.nio.file.Path;
 
 ProjectLoaderInterface loader = ProjectV1LoaderFactory.create();
 
-try (ProjectLoadResultDataObject project = loader.load(Path.of("MyProject"))) {
-    String projectName = project
-            .getNodeContainer()
-            .getProjectStructure()
-            .getProject()
-            .getProjectName();
+try(
+ProjectLoadResultDataObject project = loader.load(Path.of("MyProject"))){
+String projectName = project
+        .getNodeContainer()
+        .getProjectStructure()
+        .getProject()
+        .getProjectName();
 
-    System.out.println(projectName);
-    System.out.println(project.getGlobal().getServices().size());
-}
+    System.out.
+
+println(projectName);
+    System.out.
+
+println(project.getGlobal().
+
+getServices().
+
+size());
+        }
 ```
 
 Если приложению уже доступны собственные class loader'ы, их можно поставить перед JAR-файлами из `modules/shared`:
@@ -69,8 +78,8 @@ ProjectLoaderInterface loader = ProjectV1LoaderFactory.create(preloadedClassLoad
 `ProjectV1SaverFactory` записывает JSON-файлы, при необходимости копирует JAR-файлы и всегда создаёт ZIP рядом с каталогом проекта. Возвращаемое значение — путь к архиву `<имя-каталога>.zip`.
 
 ```java
-import io.github.byzatic.lib.configio.application.saver.ProjectSaverInterface;
-import io.github.byzatic.lib.configio.infrastructure.factory.ProjectV1SaverFactory;
+import saver.application.io.github.byzatic.tessera.lib.configio.ProjectSaverInterface;
+import factory.infrastructure.io.github.byzatic.tessera.lib.configio.ProjectV1SaverFactory;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -279,13 +288,13 @@ try (RoutineEditorMetadataLoaderInterface metadataLoader =
 конструктор без аргументов и регистрацию:
 
 ```text
-META-INF/services/io.github.byzatic.lib.configio.routine_spi.RoutineEditorDescriptorProvider
+META-INF/services/routine_spi.io.github.byzatic.tessera.lib.configio.RoutineEditorDescriptorProvider
 ```
 
 Для service JAR используется регистрация:
 
 ```text
-META-INF/services/io.github.byzatic.lib.configio.service_spi.ServiceEditorDescriptorProvider
+META-INF/services/service_spi.io.github.byzatic.tessera.lib.configio.ServiceEditorDescriptorProvider
 ```
 
 ## Отслеживание ревизий ZIP
