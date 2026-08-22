@@ -1,14 +1,16 @@
 package io.github.byzatic.tessera.lib.configio.support;
 
-import io.github.byzatic.tessera.lib.configio.routine_spi.BduiWidgetIds;
-import io.github.byzatic.tessera.lib.configio.routine_spi.RoutineEditorDescriptor;
-import io.github.byzatic.tessera.lib.configio.routine_spi.RoutineEditorDescriptorProvider;
-import io.github.byzatic.tessera.lib.configio.routine_spi.RoutineFunctionDescriptor;
-import io.github.byzatic.tessera.lib.configio.service_spi.ServiceEditorDescriptor;
-import io.github.byzatic.tessera.lib.configio.service_spi.ServiceEditorDescriptorProvider;
-import io.github.byzatic.tessera.lib.configio.service_spi.ServiceParameterDescriptor;
-import io.github.byzatic.tessera.lib.configio.service_spi.ServiceParameterType;
-import io.github.byzatic.tessera.lib.configio.service_spi.ServiceStorageRole;
+import io.github.byzatic.tessera.lib.configio.unified.spi.routine.BduiWidgetIds;
+import io.github.byzatic.tessera.lib.configio.unified.spi.routine.RoutineEditorDescriptor;
+import io.github.byzatic.tessera.lib.configio.unified.spi.routine.RoutineEditorDescriptorProvider;
+import io.github.byzatic.tessera.lib.configio.unified.spi.routine.RoutineFunctionDescriptor;
+import io.github.byzatic.tessera.lib.configio.unified.spi.service.ServiceEditorDescriptor;
+import io.github.byzatic.tessera.lib.configio.unified.spi.service.ServiceEditorDescriptorProvider;
+import io.github.byzatic.tessera.lib.configio.unified.spi.service.ServiceParameterDescriptor;
+import io.github.byzatic.tessera.lib.configio.unified.spi.service.ServiceParameterType;
+import io.github.byzatic.tessera.lib.configio.unified.spi.service.ServiceStorageRole;
+import io.github.byzatic.tessera.lib.configio.support.legacy.LegacyDuplicateRoutineEditorDescriptorProvider;
+import io.github.byzatic.tessera.lib.configio.support.legacy.LegacyDuplicateServiceEditorDescriptorProvider;
 import io.github.byzatic.tessera.service.api_engine.MCg3ServiceApiInterface;
 import io.github.byzatic.tessera.service.service.ServiceFactoryInterface;
 import io.github.byzatic.tessera.service.service.ServiceInterface;
@@ -38,9 +40,15 @@ public final class TestProjectFixture implements AutoCloseable {
     private static final String SERVICE_FACTORY_INTERFACE =
             "io.github.byzatic.tessera.service.service.ServiceFactoryInterface";
     private static final String ROUTINE_EDITOR_DESCRIPTOR_PROVIDER_INTERFACE =
-            "io.github.byzatic.tessera.lib.configio.routine_spi."
+            "io.github.byzatic.tessera.lib.configio.unified.spi.routine."
                     + "RoutineEditorDescriptorProvider";
     private static final String SERVICE_EDITOR_DESCRIPTOR_PROVIDER_INTERFACE =
+            "io.github.byzatic.tessera.lib.configio.unified.spi.service."
+                    + "ServiceEditorDescriptorProvider";
+    private static final String LEGACY_ROUTINE_EDITOR_DESCRIPTOR_PROVIDER_INTERFACE =
+            "io.github.byzatic.tessera.lib.configio.routine_spi."
+                    + "RoutineEditorDescriptorProvider";
+    private static final String LEGACY_SERVICE_EDITOR_DESCRIPTOR_PROVIDER_INTERFACE =
             "io.github.byzatic.tessera.lib.configio.service_spi."
                     + "ServiceEditorDescriptorProvider";
 
@@ -114,18 +122,18 @@ public final class TestProjectFixture implements AutoCloseable {
 
     public Path addDuplicateRoutineMetadataJar() throws IOException {
         Path duplicateJar = moduleJar.getParent().resolve("duplicate-routine-metadata.jar");
-        createMetadataProviderJar(
+        createLegacyMetadataProviderJar(
                 duplicateJar,
-                DuplicateDataEnrichmentEditorDescriptorProvider.class
+                LegacyDuplicateRoutineEditorDescriptorProvider.class
         );
         return duplicateJar;
     }
 
     public Path addDuplicateServiceMetadataJar() throws IOException {
         Path duplicateJar = serviceJar.getParent().resolve("duplicate-service-metadata.jar");
-        createServiceMetadataProviderJar(
+        createLegacyServiceMetadataProviderJar(
                 duplicateJar,
-                DuplicatePrometheusExportEditorDescriptorProvider.class
+                LegacyDuplicateServiceEditorDescriptorProvider.class
         );
         return duplicateJar;
     }
@@ -173,7 +181,7 @@ public final class TestProjectFixture implements AutoCloseable {
         }
     }
 
-    private static void createServiceMetadataProviderJar(
+    private static void createLegacyServiceMetadataProviderJar(
             Path jarFile,
             Class<?>... metadataProviders
     ) throws IOException {
@@ -185,7 +193,7 @@ public final class TestProjectFixture implements AutoCloseable {
         )) {
             writeServiceEntry(
                     output,
-                    SERVICE_EDITOR_DESCRIPTOR_PROVIDER_INTERFACE,
+                    LEGACY_SERVICE_EDITOR_DESCRIPTOR_PROVIDER_INTERFACE,
                     metadataProviders
             );
         }
@@ -212,7 +220,7 @@ public final class TestProjectFixture implements AutoCloseable {
         }
     }
 
-    private static void createMetadataProviderJar(
+    private static void createLegacyMetadataProviderJar(
             Path jarFile,
             Class<?>... metadataProviders
     ) throws IOException {
@@ -224,7 +232,7 @@ public final class TestProjectFixture implements AutoCloseable {
         )) {
             writeServiceEntry(
                     output,
-                    ROUTINE_EDITOR_DESCRIPTOR_PROVIDER_INTERFACE,
+                    LEGACY_ROUTINE_EDITOR_DESCRIPTOR_PROVIDER_INTERFACE,
                     metadataProviders
             );
         }
@@ -374,19 +382,6 @@ public final class TestProjectFixture implements AutoCloseable {
         }
     }
 
-    public static final class DuplicateDataEnrichmentEditorDescriptorProvider
-            implements RoutineEditorDescriptorProvider {
-
-        @Override
-        public RoutineEditorDescriptor getDescriptor() {
-            return RoutineEditorDescriptor.newBuilder()
-                    .routineId("DataEnrichmentWorkflowRoutine")
-                    .displayName("Duplicate Data Enrichment")
-                    .functions(List.of())
-                    .build();
-        }
-    }
-
     public static final class PrometheusExportServiceFactory
             implements ServiceFactoryInterface {
 
@@ -434,15 +429,4 @@ public final class TestProjectFixture implements AutoCloseable {
         }
     }
 
-    public static final class DuplicatePrometheusExportEditorDescriptorProvider
-            implements ServiceEditorDescriptorProvider {
-
-        @Override
-        public ServiceEditorDescriptor getDescriptor() {
-            return ServiceEditorDescriptor.newBuilder()
-                    .serviceId("PrometheusExportService")
-                    .displayName("Duplicate Prometheus Export")
-                    .build();
-        }
-    }
 }

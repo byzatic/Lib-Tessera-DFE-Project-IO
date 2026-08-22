@@ -1,6 +1,6 @@
 package io.github.byzatic.tessera.lib.configio.domain.model;
 
-import io.github.byzatic.tessera.lib.configio.service_spi.ServiceEditorDescriptor;
+import io.github.byzatic.tessera.lib.configio.unified.spi.service.ServiceEditorDescriptor;
 
 import java.nio.file.Path;
 import java.util.Objects;

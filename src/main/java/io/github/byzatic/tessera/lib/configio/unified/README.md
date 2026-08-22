@@ -5,11 +5,11 @@
 
 ## Основная точка входа
 
-`TesseraProjectIO` — единый прикладной фасад. Временная точка сборки стандартной реализации —
-`DefaultTesseraProjectIO`:
+`TesseraProjectIO` — единый прикладной фасад. Стандартную реализацию создаёт публичный
+composition root `TesseraProjectIOFactory`:
 
 ```java
-TesseraProjectIO projectIO = DefaultTesseraProjectIO.createDefault();
+TesseraProjectIO projectIO = TesseraProjectIOFactory.createDefault();
 
 TesseraProject project = projectIO.loadProject(projectDirectory);
 
@@ -85,6 +85,25 @@ immutable-список `ServiceParameterMetadata`. Параметр объявл
 
 Чистая модель `TesseraProject` не содержит class loader и не требует вызова `close()`.
 
+## SPI метаданных редактора
+
+Routine- и service-модули публикуют метаданные редактора через JDK-only контракты:
+
+```text
+io.github.byzatic.tessera.lib.configio.unified.spi.routine
+io.github.byzatic.tessera.lib.configio.unified.spi.service
+```
+
+Descriptor-модели неизменяемы и создаются через `newBuilder()`. Провайдер регистрируется
+по полному имени интерфейса, например:
+
+```text
+META-INF/services/io.github.byzatic.tessera.lib.configio.unified.spi.routine.RoutineEditorDescriptorProvider
+```
+
+Пакеты `routine_spi` и `service_spi` продолжают загружаться как compatibility API для JAR,
+созданных до появления unified SPI. Новые модули должны использовать только `unified.spi`.
+
 ## Владение ресурсами
 
 - `TesseraProjectIO` не хранит состояние и не требует закрытия.
@@ -99,8 +118,9 @@ Runtime session необходимо закрывать после остано�
 
 ## Граница текущей реализации
 
-`unified.internal.DefaultTesseraProjectIO` — совместимый адаптер. Он вызывает существующие V1
-factory/strategy и преобразует legacy `*DataObject` в новый агрегат и обратно.
+`unified.internal.DefaultTesseraProjectIO` — внутренний совместимый адаптер. Публичный
+`TesseraProjectIOFactory` выбирает и создаёт его в composition root. Адаптер вызывает существующие
+V1 factory/strategy и преобразует legacy `*DataObject` в новый агрегат и обратно.
 
 Остальные классы из `unified.internal` не являются пользовательским API. После принятия
 архитектуры стандартную реализацию можно перенести в окончательный composition-root пакет.

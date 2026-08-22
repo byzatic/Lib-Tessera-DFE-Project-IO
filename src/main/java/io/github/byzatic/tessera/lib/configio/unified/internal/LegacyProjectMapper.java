@@ -19,7 +19,7 @@ import io.github.byzatic.tessera.lib.configio.domain.model.StageConsistencyDataO
 import io.github.byzatic.tessera.lib.configio.domain.model.StageDescriptionDataObject;
 import io.github.byzatic.tessera.lib.configio.domain.model.StorageDataObject;
 import io.github.byzatic.tessera.lib.configio.domain.model.WorkerDescriptionDataObject;
-import io.github.byzatic.tessera.lib.configio.routine_spi.RoutineFunctionDescriptor;
+import io.github.byzatic.tessera.lib.configio.unified.spi.routine.RoutineFunctionDescriptor;
 import io.github.byzatic.tessera.lib.configio.unified.model.ConfigurationFile;
 import io.github.byzatic.tessera.lib.configio.unified.model.DslSource;
 import io.github.byzatic.tessera.lib.configio.unified.model.NodeConfiguration;

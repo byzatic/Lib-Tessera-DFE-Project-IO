@@ -3,9 +3,10 @@ package io.github.byzatic.tessera.lib.configio.infrastructure.loader;
 import io.github.byzatic.tessera.lib.configio.application.service.ServiceEditorMetadataLoaderInterface;
 import io.github.byzatic.tessera.lib.configio.domain.exception.PluginLoadingException;
 import io.github.byzatic.tessera.lib.configio.domain.model.ServiceEditorMetadataDataObject;
+import io.github.byzatic.tessera.lib.configio.infrastructure.loader.compatibility.LegacyServiceEditorDescriptorLoaderAdapter;
 import io.github.byzatic.tessera.lib.configio.infrastructure.utils.ClassLoaderCloserUtility;
-import io.github.byzatic.tessera.lib.configio.service_spi.ServiceEditorDescriptor;
-import io.github.byzatic.tessera.lib.configio.service_spi.ServiceEditorDescriptorProvider;
+import io.github.byzatic.tessera.lib.configio.unified.spi.service.ServiceEditorDescriptor;
+import io.github.byzatic.tessera.lib.configio.unified.spi.service.ServiceEditorDescriptorProvider;
 
 import java.io.File;
 import java.io.FilenameFilter;
@@ -32,6 +33,7 @@ public final class ServiceEditorMetadataLoaderStrategy
     private final Map<String, ServiceEditorMetadataDataObject> metadataByServiceId;
     private final List<URLClassLoader> classLoaders;
     private final ClassLoaderCloserUtility classLoaderCloser;
+    private final LegacyServiceEditorDescriptorLoaderAdapter legacyDescriptorLoader;
     private boolean closed;
 
     public ServiceEditorMetadataLoaderStrategy(
@@ -56,6 +58,7 @@ public final class ServiceEditorMetadataLoaderStrategy
                 new LinkedHashMap<String, ServiceEditorMetadataDataObject>();
         this.classLoaders = new ArrayList<URLClassLoader>();
         this.classLoaderCloser = classLoaderCloser;
+        this.legacyDescriptorLoader = new LegacyServiceEditorDescriptorLoaderAdapter();
 
         try {
             load(pluginsDirectory, sharedResourcesClassLoader);
@@ -130,6 +133,13 @@ public final class ServiceEditorMetadataLoaderStrategy
             for (ServiceEditorDescriptorProvider provider : providers) {
                 register(jarFile, provider.getDescriptor());
             }
+            loadLegacyProviders(jarFile, classLoader);
+        }
+    }
+
+    private void loadLegacyProviders(File jarFile, ClassLoader classLoader) throws Exception {
+        for (ServiceEditorDescriptor descriptor : legacyDescriptorLoader.load(classLoader)) {
+            register(jarFile, descriptor);
         }
     }
 
