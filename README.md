@@ -9,6 +9,7 @@ Java-библиотека ввода-вывода конфигурации пр�
 - копирование JAR-файлов workflow-модулей и сервисов в проект;
 - построение цепочки class loader'ов для общих JAR-зависимостей;
 - обнаружение фабрик модулей и сервисов через `ServiceLoader`;
+- загрузка декларативных метаданных workflow-рутин для редактора без создания runtime-рутин;
 - polling ZIP-файла, проверка стабильности и публикация изолированных ревизий;
 - защита распаковки от Zip Slip, чрезмерного числа файлов и слишком большого распакованного размера.
 
@@ -37,24 +38,33 @@ mvn install -DskipTests -Dgpg.skip=true
 Основная точка входа — `ProjectV1LoaderFactory`. Результат загрузки владеет class loader'ами общих ресурсов, поэтому его необходимо закрывать.
 
 ```java
-import io.github.byzatic.lib.configio.application.loader.ProjectLoaderInterface;
-import io.github.byzatic.lib.configio.domain.model.ProjectLoadResultDataObject;
-import io.github.byzatic.lib.configio.infrastructure.factory.ProjectV1LoaderFactory;
+import loader.application.io.github.byzatic.tessera.lib.configio.ProjectLoaderInterface;
+import model.domain.io.github.byzatic.tessera.lib.configio.ProjectLoadResultDataObject;
+import factory.infrastructure.io.github.byzatic.tessera.lib.configio.ProjectV1LoaderFactory;
 
 import java.nio.file.Path;
 
 ProjectLoaderInterface loader = ProjectV1LoaderFactory.create();
 
-try (ProjectLoadResultDataObject project = loader.load(Path.of("MyProject"))) {
-    String projectName = project
-            .getNodeContainer()
-            .getProjectStructure()
-            .getProject()
-            .getProjectName();
+try(
+ProjectLoadResultDataObject project = loader.load(Path.of("MyProject"))){
+String projectName = project
+        .getNodeContainer()
+        .getProjectStructure()
+        .getProject()
+        .getProjectName();
 
-    System.out.println(projectName);
-    System.out.println(project.getGlobal().getServices().size());
-}
+    System.out.
+
+println(projectName);
+    System.out.
+
+println(project.getGlobal().
+
+getServices().
+
+size());
+        }
 ```
 
 Если приложению уже доступны собственные class loader'ы, их можно поставить перед JAR-файлами из `modules/shared`:
@@ -68,8 +78,8 @@ ProjectLoaderInterface loader = ProjectV1LoaderFactory.create(preloadedClassLoad
 `ProjectV1SaverFactory` записывает JSON-файлы, при необходимости копирует JAR-файлы и всегда создаёт ZIP рядом с каталогом проекта. Возвращаемое значение — путь к архиву `<имя-каталога>.zip`.
 
 ```java
-import io.github.byzatic.lib.configio.application.saver.ProjectSaverInterface;
-import io.github.byzatic.lib.configio.infrastructure.factory.ProjectV1SaverFactory;
+import saver.application.io.github.byzatic.tessera.lib.configio.ProjectSaverInterface;
+import factory.infrastructure.io.github.byzatic.tessera.lib.configio.ProjectV1SaverFactory;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -136,8 +146,10 @@ MyProject/
 | `DslFileSaverInterface` | Запись `.mcg3dsl` перед архивацией | `save(...)` |
 | `ProjectArchiverInterface` | Архивация готового каталога | `archive(Path)` |
 | `ModuleLoaderInterface` | Поиск и создание workflow-модулей | `getAvailableModuleNames()`, `getModule(...)`, `close()` |
+| `RoutineEditorMetadataLoaderInterface` | Чтение функций, аргументов и BDUI-виджетов рутин | `getAvailableMetadata()`, `findMetadata(...)`, `close()` |
 | `ModuleSaverInterface` | Копирование JAR модуля | `save(moduleJar, projectDirectory)` |
 | `ServiceLoaderInterface` | Поиск и создание сервисов | `getAvailableServiceNames()`, `getService(...)`, `close()` |
+| `ServiceEditorMetadataLoaderInterface` | Чтение параметров редактора сервисов | `getAvailableMetadata()`, `findMetadata(...)`, `close()` |
 | `ServiceSaverInterface` | Копирование JAR сервиса | `save(serviceJar, projectDirectory)` |
 | `ProjectRevisionSource` | Наблюдение за ZIP и публикация ревизий | `start(listener)`, `close()` |
 | `ProjectRevisionListener` | Получение ревизии либо ошибки подготовки | `onRevisionAvailable(...)`, `onRevisionRejected(...)` |
@@ -152,7 +164,7 @@ MyProject/
 | `PipelineDaoInterface` | `pipeline.json` каждого узла |
 | `SharedResourcesDaoInterface` | JAR-файлы из `modules/shared` |
 
-Стандартные реализации создаются фабриками `ProjectV1LoaderFactory`, `ProjectV1SaverFactory`, `ProjectV1ExporterFactory`, `ModuleLoaderFactory`, `ModuleSaverFactory`, `ServiceLoaderFactory`, `ServiceSaverFactory` и `ProjectRevisionSourceFactory`.
+Стандартные реализации создаются фабриками `ProjectV1LoaderFactory`, `ProjectV1SaverFactory`, `ProjectV1ExporterFactory`, `ModuleLoaderFactory`, `RoutineEditorMetadataLoaderFactory`, `ModuleSaverFactory`, `ServiceLoaderFactory`, `ServiceEditorMetadataLoaderFactory`, `ServiceSaverFactory` и `ProjectRevisionSourceFactory`.
 
 ## Основные классы
 
@@ -168,6 +180,8 @@ MyProject/
 | `GsonPipelineDao` | Читает и пишет `pipeline.json` узлов |
 | `UrlClassLoaderSharedResourcesDao` | Загружает отсортированные JAR-файлы из `modules/shared` в последовательную цепочку class loader'ов |
 | `ModuleLoaderStrategy`, `ServiceLoaderStrategy` | Обнаруживают SPI-фабрики и создают экземпляры плагинов |
+| `RoutineEditorMetadataLoaderStrategy` | Загружает SPI-дескрипторы редактора, версию manifest и путь JAR, не создавая runtime-рутину |
+| `ServiceEditorMetadataLoaderStrategy` | Загружает SPI-дескрипторы параметров сервиса, версию manifest и путь JAR, не создавая runtime-сервис |
 | `ModuleSaverStrategy`, `ServiceSaverStrategy` | Копируют JAR в соответствующие каталоги проекта |
 | `ZipProjectArchiverStrategy` | Создаёт ZIP-архив каталога проекта |
 | `PollingZipProjectRevisionSource` | Реализация polling-источника ZIP-ревизий |
@@ -224,9 +238,9 @@ ProjectLoadResultDataObject
 - `NodeGlobal` — `global.json` узла;
 - `Pipeline`, `StagesConsistencyItem`, `StagesDescriptionItem`, `WorkersDescriptionItem`, `ConfigurationFilesItem` — `pipeline.json`.
 
-## Загрузка модулей и сервисов
+## Загрузка модулей, метаданных редактора и сервисов
 
-JAR-плагины обнаруживаются стандартным Java SPI. JAR модуля должен регистрировать реализацию `WorkflowRoutineFactoryInterface`, а JAR сервиса — `ServiceFactoryInterface` в `META-INF/services/...`.
+JAR-плагины обнаруживаются стандартным Java SPI. JAR модуля должен регистрировать реализацию `WorkflowRoutineFactoryInterface`, а JAR сервиса — `ServiceFactoryInterface` в `META-INF/services/...`. Для интеграции с редактором JAR модуля дополнительно регистрирует `RoutineEditorDescriptorProvider`, а JAR сервиса — `ServiceEditorDescriptorProvider`.
 
 ```java
 try (ModuleLoaderInterface modules = ModuleLoaderFactory.create(
@@ -243,6 +257,45 @@ try (ModuleLoaderInterface modules = ModuleLoaderFactory.create(
 ```
 
 Имя плагина вычисляется из простого имени фабрики удалением суффикса `Factory`: `MyRoutineFactory` становится `MyRoutine`. Дублирующиеся имена считаются ошибкой. `ModuleLoaderInterface` и `ServiceLoaderInterface` владеют своими class loader'ами и должны закрываться.
+
+Метаданные редактора загружаются отдельно от исполняемой фабрики:
+
+```java
+try (RoutineEditorMetadataLoaderInterface metadataLoader =
+             RoutineEditorMetadataLoaderFactory.create(
+                     projectDirectory.resolve("modules/workflow_routines"),
+                     project.getSharedResourcesContainer()
+             )) {
+    for (RoutineEditorMetadataDataObject metadata
+            : metadataLoader.getAvailableMetadata()) {
+        System.out.println(metadata.getRoutineId());
+        System.out.println(metadata.getVersion());
+        System.out.println(metadata.getDescriptor().getFunctions());
+    }
+}
+```
+
+`RoutineEditorMetadataDataObject` содержит неизменяемый `RoutineEditorDescriptor`, абсолютный путь исходного JAR и `Implementation-Version` из `META-INF/MANIFEST.MF`. Если версия в manifest не задана, возвращается пустая строка. Повторяющийся `routineId` считается ошибкой загрузки.
+
+Сервисы публикуют метаданные симметрично через `ServiceEditorDescriptorProvider`.
+`ServiceEditorDescriptor` объявляет идентификатор, отображаемое имя, описание и параметры.
+Для каждого параметра задаются тип, default, варианты `SELECT` и роль хранилища
+`NONE`, `INPUT` или `OUTPUT`. `ServiceEditorMetadataDataObject` также добавляет абсолютный
+путь JAR и `Implementation-Version`; повторяющийся `serviceId` считается ошибкой загрузки.
+
+Публичный JDK-only SPI находится в пакетах `io.github.byzatic.lib.configio.routine_spi` и
+`io.github.byzatic.lib.configio.service_spi`. Реализация провайдера должна иметь публичный
+конструктор без аргументов и регистрацию:
+
+```text
+META-INF/services/routine_spi.io.github.byzatic.tessera.lib.configio.RoutineEditorDescriptorProvider
+```
+
+Для service JAR используется регистрация:
+
+```text
+META-INF/services/service_spi.io.github.byzatic.tessera.lib.configio.ServiceEditorDescriptorProvider
+```
 
 ## Отслеживание ревизий ZIP
 
