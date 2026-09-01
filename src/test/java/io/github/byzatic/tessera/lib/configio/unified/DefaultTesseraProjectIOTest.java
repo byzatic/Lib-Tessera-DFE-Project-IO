@@ -1,7 +1,6 @@
 package io.github.byzatic.tessera.lib.configio.unified;
 
 import io.github.byzatic.tessera.lib.configio.support.TestProjectFixture;
-import io.github.byzatic.tessera.lib.configio.unified.internal.DefaultTesseraProjectIO;
 import io.github.byzatic.tessera.lib.configio.unified.model.ExportProjectRequest;
 import io.github.byzatic.tessera.lib.configio.unified.model.NodeId;
 import io.github.byzatic.tessera.lib.configio.unified.model.SaveProjectRequest;
@@ -32,7 +31,7 @@ public class DefaultTesseraProjectIOTest {
 
     @Test
     public void shouldExposeCompleteProjectAsOneAggregate() throws Exception {
-        TesseraProjectIO projectIO = DefaultTesseraProjectIO.createDefault();
+        TesseraProjectIO projectIO = TesseraProjectIOFactory.createDefault();
         try (TestProjectFixture fixture = TestProjectFixture.create()) {
             TesseraProject project = projectIO.loadProject(fixture.getProjectDirectory());
 
@@ -54,7 +53,7 @@ public class DefaultTesseraProjectIOTest {
 
     @Test
     public void shouldSaveAndReloadThroughUnifiedApi() throws Exception {
-        TesseraProjectIO projectIO = DefaultTesseraProjectIO.createDefault();
+        TesseraProjectIO projectIO = TesseraProjectIOFactory.createDefault();
         Path temporaryDirectory = Files.createTempDirectory("unified-project-io-test-");
         try (TestProjectFixture fixture = TestProjectFixture.create()) {
             TesseraProject source = projectIO.loadProject(fixture.getProjectDirectory());
@@ -82,7 +81,7 @@ public class DefaultTesseraProjectIOTest {
 
     @Test
     public void shouldOpenAndCloseRuntimeResourcesThroughOneSession() throws Exception {
-        TesseraProjectIO projectIO = DefaultTesseraProjectIO.createDefault();
+        TesseraProjectIO projectIO = TesseraProjectIOFactory.createDefault();
         try (TestProjectFixture fixture = TestProjectFixture.create()) {
             ProjectRuntimeSession runtime = projectIO.openRuntime(fixture.getProjectDirectory());
             try {
@@ -118,7 +117,7 @@ public class DefaultTesseraProjectIOTest {
 
     @Test
     public void shouldPublishUnifiedRevisionHandle() throws Exception {
-        TesseraProjectIO projectIO = DefaultTesseraProjectIO.createDefault();
+        TesseraProjectIO projectIO = TesseraProjectIOFactory.createDefault();
         Path temporaryDirectory = Files.createTempDirectory("unified-revision-test-");
         AtomicReference<ProjectRevisionHandle> revision =
                 new AtomicReference<ProjectRevisionHandle>();

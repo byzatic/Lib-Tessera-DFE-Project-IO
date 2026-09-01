@@ -1,6 +1,6 @@
 package io.github.byzatic.tessera.lib.configio.domain.model;
 
-import io.github.byzatic.tessera.lib.configio.routine_spi.RoutineEditorDescriptor;
+import io.github.byzatic.tessera.lib.configio.unified.spi.routine.RoutineEditorDescriptor;
 
 import java.nio.file.Path;
 import java.util.Objects;

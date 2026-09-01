@@ -3,9 +3,10 @@ package io.github.byzatic.tessera.lib.configio.infrastructure.loader;
 import io.github.byzatic.tessera.lib.configio.application.module.RoutineEditorMetadataLoaderInterface;
 import io.github.byzatic.tessera.lib.configio.domain.exception.PluginLoadingException;
 import io.github.byzatic.tessera.lib.configio.domain.model.RoutineEditorMetadataDataObject;
+import io.github.byzatic.tessera.lib.configio.infrastructure.loader.compatibility.LegacyRoutineEditorDescriptorLoaderAdapter;
 import io.github.byzatic.tessera.lib.configio.infrastructure.utils.ClassLoaderCloserUtility;
-import io.github.byzatic.tessera.lib.configio.routine_spi.RoutineEditorDescriptor;
-import io.github.byzatic.tessera.lib.configio.routine_spi.RoutineEditorDescriptorProvider;
+import io.github.byzatic.tessera.lib.configio.unified.spi.routine.RoutineEditorDescriptor;
+import io.github.byzatic.tessera.lib.configio.unified.spi.routine.RoutineEditorDescriptorProvider;
 
 import java.io.File;
 import java.io.FilenameFilter;
@@ -32,6 +33,7 @@ public final class RoutineEditorMetadataLoaderStrategy
     private final Map<String, RoutineEditorMetadataDataObject> metadataByRoutineId;
     private final List<URLClassLoader> classLoaders;
     private final ClassLoaderCloserUtility classLoaderCloser;
+    private final LegacyRoutineEditorDescriptorLoaderAdapter legacyDescriptorLoader;
     private boolean closed;
 
     public RoutineEditorMetadataLoaderStrategy(
@@ -55,6 +57,7 @@ public final class RoutineEditorMetadataLoaderStrategy
         this.metadataByRoutineId = new LinkedHashMap<String, RoutineEditorMetadataDataObject>();
         this.classLoaders = new ArrayList<URLClassLoader>();
         this.classLoaderCloser = classLoaderCloser;
+        this.legacyDescriptorLoader = new LegacyRoutineEditorDescriptorLoaderAdapter();
 
         try {
             load(pluginsDirectory, sharedResourcesClassLoader);
@@ -129,6 +132,13 @@ public final class RoutineEditorMetadataLoaderStrategy
             for (RoutineEditorDescriptorProvider provider : providers) {
                 register(jarFile, provider.getDescriptor());
             }
+            loadLegacyProviders(jarFile, classLoader);
+        }
+    }
+
+    private void loadLegacyProviders(File jarFile, ClassLoader classLoader) throws Exception {
+        for (RoutineEditorDescriptor descriptor : legacyDescriptorLoader.load(classLoader)) {
+            register(jarFile, descriptor);
         }
     }
 

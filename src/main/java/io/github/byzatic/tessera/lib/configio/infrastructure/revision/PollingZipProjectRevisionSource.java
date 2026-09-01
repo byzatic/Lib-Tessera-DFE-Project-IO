@@ -338,7 +338,6 @@ public final class PollingZipProjectRevisionSource implements ProjectRevisionSou
     }
 
     private void publishFailure(Path sourceArchive, String revisionId, Throwable cause) {
-        logger.error("Project revision {} was rejected", revisionId, cause);
         try {
             listener.onRevisionRejected(
                     new ProjectRevisionFailure(sourceArchive, revisionId, cause)

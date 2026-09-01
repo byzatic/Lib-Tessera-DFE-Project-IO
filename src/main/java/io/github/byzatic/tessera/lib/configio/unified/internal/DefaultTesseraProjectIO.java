@@ -65,12 +65,11 @@ public final class DefaultTesseraProjectIO implements TesseraProjectIO {
      * @param preloadedClassLoaders class loaders supplied by the embedding application
      */
     public DefaultTesseraProjectIO(List<ClassLoader> preloadedClassLoaders) {
-        this.preloadedClassLoaders = List.copyOf(
-                Objects.requireNonNull(preloadedClassLoaders, "preloadedClassLoaders")
-        );
-        if (this.preloadedClassLoaders.stream().anyMatch(Objects::isNull)) {
+        Objects.requireNonNull(preloadedClassLoaders, "preloadedClassLoaders");
+        if (preloadedClassLoaders.stream().anyMatch(Objects::isNull)) {
             throw new IllegalArgumentException("Preloaded class loaders must not contain null");
         }
+        this.preloadedClassLoaders = List.copyOf(preloadedClassLoaders);
     }
 
     @Override

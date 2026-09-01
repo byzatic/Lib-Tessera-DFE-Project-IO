@@ -4,9 +4,9 @@ import io.github.byzatic.tessera.lib.configio.application.service.ServiceEditorM
 import io.github.byzatic.tessera.lib.configio.domain.exception.PluginLoadingException;
 import io.github.byzatic.tessera.lib.configio.domain.model.ServiceEditorMetadataDataObject;
 import io.github.byzatic.tessera.lib.configio.infrastructure.factory.ServiceEditorMetadataLoaderFactory;
-import io.github.byzatic.tessera.lib.configio.service_spi.ServiceParameterType;
-import io.github.byzatic.tessera.lib.configio.service_spi.ServiceStorageRole;
 import io.github.byzatic.tessera.lib.configio.support.TestProjectFixture;
+import io.github.byzatic.tessera.lib.configio.unified.spi.service.ServiceParameterType;
+import io.github.byzatic.tessera.lib.configio.unified.spi.service.ServiceStorageRole;
 import org.junit.Test;
 
 import java.util.List;

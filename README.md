@@ -283,19 +283,24 @@ try (RoutineEditorMetadataLoaderInterface metadataLoader =
 `NONE`, `INPUT` или `OUTPUT`. `ServiceEditorMetadataDataObject` также добавляет абсолютный
 путь JAR и `Implementation-Version`; повторяющийся `serviceId` считается ошибкой загрузки.
 
-Публичный JDK-only SPI находится в пакетах `io.github.byzatic.lib.configio.routine_spi` и
-`io.github.byzatic.lib.configio.service_spi`. Реализация провайдера должна иметь публичный
-конструктор без аргументов и регистрацию:
+Публичный JDK-only SPI находится в пакетах
+`io.github.byzatic.tessera.lib.configio.unified.spi.routine` и
+`io.github.byzatic.tessera.lib.configio.unified.spi.service`. Descriptor-модели неизменяемы
+и создаются через `newBuilder()`. Реализация провайдера должна иметь публичный конструктор
+без аргументов и регистрацию:
 
 ```text
-META-INF/services/routine_spi.io.github.byzatic.tessera.lib.configio.RoutineEditorDescriptorProvider
+META-INF/services/io.github.byzatic.tessera.lib.configio.unified.spi.routine.RoutineEditorDescriptorProvider
 ```
 
 Для service JAR используется регистрация:
 
 ```text
-META-INF/services/service_spi.io.github.byzatic.tessera.lib.configio.ServiceEditorDescriptorProvider
+META-INF/services/io.github.byzatic.tessera.lib.configio.unified.spi.service.ServiceEditorDescriptorProvider
 ```
+
+Старые пакеты `routine_spi` и `service_spi` поддерживаются как compatibility API для уже
+собранных JAR. Новые плагины должны зависеть только от пространства имён `unified`.
 
 ## Отслеживание ревизий ZIP
 
