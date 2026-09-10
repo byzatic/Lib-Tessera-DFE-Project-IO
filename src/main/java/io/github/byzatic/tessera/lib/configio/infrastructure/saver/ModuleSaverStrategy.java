@@ -27,4 +27,9 @@ public final class ModuleSaverStrategy implements ModuleSaverInterface {
             throws PluginSavingException {
         return pluginSaver.save(moduleJar, projectDirectory, MODULE_DIRECTORY);
     }
+    @Override
+    public Path saveShared(Path sharedJar, Path projectDirectory)
+            throws PluginSavingException {
+        return pluginSaver.save(sharedJar, projectDirectory, Path.of("modules", "shared"));
+    }
 }

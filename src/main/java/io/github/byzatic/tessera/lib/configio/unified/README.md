@@ -124,3 +124,29 @@ V1 factory/strategy и преобразует legacy `*DataObject` в новый
 
 Остальные классы из `unified.internal` не являются пользовательским API. После принятия
 архитектуры стандартную реализацию можно перенести в окончательный composition-root пакет.
+
+### Shared-resource JARs
+
+Supply shared-resource JARs through the artifacts of a save or export request:
+
+```java
+ProjectArtifacts artifacts = ProjectArtifacts.newBuilder()
+        .sharedJars(List.of(Path.of("resources.jar")))
+        .build();
+
+projectIO.saveProject(SaveProjectRequest.newBuilder()
+        .projectDirectory(projectDirectory)
+        .project(project)
+        .artifacts(artifacts)
+        .build());
+
+projectIO.exportProject(ExportProjectRequest.newBuilder()
+        .archiveDestination(archiveDestination)
+        .project(project)
+        .artifacts(artifacts)
+        .build());
+```
+
+Shared JARs are copied into `modules/shared/` and included in the resulting ZIP.
+The shared list defaults to empty. Like routine and service JAR paths, shared paths
+are copied defensively and normalized to absolute paths when artifacts are built.
