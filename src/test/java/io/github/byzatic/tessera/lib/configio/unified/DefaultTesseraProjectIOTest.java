@@ -10,6 +10,15 @@ import io.github.byzatic.tessera.lib.configio.unified.model.ServiceParameterType
 import io.github.byzatic.tessera.lib.configio.unified.model.ServiceStorageRole;
 import io.github.byzatic.tessera.lib.configio.unified.model.TesseraProject;
 import org.junit.Test;
+import io.github.byzatic.tessera.lib.configio.unified.model.ProjectArtifacts;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.jar.JarOutputStream;
+import java.util.jar.JarEntry;
+import java.util.zip.ZipFile;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertThrows;
 
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
@@ -28,6 +37,60 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class DefaultTesseraProjectIOTest {
+
+    @Test
+    public void shouldSaveAndExportSharedJars() throws Exception {
+        TesseraProjectIO projectIO = TesseraProjectIOFactory.createDefault();
+        Path temporaryDirectory = Files.createTempDirectory("shared-artifacts-test-");
+        try (TestProjectFixture fixture = TestProjectFixture.create()) {
+            Path sharedJar = temporaryDirectory.resolve("resources.jar");
+            try (JarOutputStream jar = new JarOutputStream(Files.newOutputStream(sharedJar))) {
+                jar.putNextEntry(new JarEntry("shared.txt"));
+                jar.write(new byte[] {1, 2, 3});
+                jar.closeEntry();
+            }
+            byte[] expected = Files.readAllBytes(sharedJar);
+            TesseraProject project = projectIO.loadProject(fixture.getProjectDirectory());
+            ProjectArtifacts artifacts = ProjectArtifacts.newBuilder().sharedJars(List.of(sharedJar)).build();
+            Path savedDirectory = temporaryDirectory.resolve("saved");
+            SaveProjectResult saved = projectIO.saveProject(SaveProjectRequest.newBuilder()
+                    .projectDirectory(savedDirectory).project(project).artifacts(artifacts).build());
+            assertArrayEquals(expected, Files.readAllBytes(savedDirectory.resolve("modules/shared/resources.jar")));
+            Path exported = projectIO.exportProject(ExportProjectRequest.newBuilder()
+                    .archiveDestination(temporaryDirectory.resolve("exported.zip"))
+                    .project(project).artifacts(artifacts).build());
+            for (Path archive : List.of(saved.getArchive(), exported)) {
+                try (ZipFile zip = new ZipFile(archive.toFile())) {
+                    var matches = zip.stream().filter(entry -> entry.getName().endsWith("modules/shared/resources.jar")).toList();
+                    assertEquals(1, matches.size());
+                    try (var input = zip.getInputStream(matches.get(0))) {
+                        assertArrayEquals(expected, input.readAllBytes());
+                    }
+                }
+            }
+        } finally {
+            deleteRecursively(temporaryDirectory);
+        }
+    }
+
+    @Test
+    public void shouldKeepSharedArtifactsImmutableAndIncludeThemInValueSemantics() {
+        Path source = Path.of("artifacts", "..", "shared.jar");
+        List<Path> paths = new ArrayList<>(List.of(source));
+        ProjectArtifacts.Builder builder = ProjectArtifacts.newBuilder().sharedJars(paths);
+        paths.clear();
+        ProjectArtifacts artifacts = builder.build();
+        assertEquals(List.of(source.toAbsolutePath().normalize()), artifacts.getSharedJars());
+        assertThrows(UnsupportedOperationException.class, () -> artifacts.getSharedJars().clear());
+        assertThrows(NullPointerException.class, () -> ProjectArtifacts.newBuilder().sharedJars(null));
+        assertThrows(NullPointerException.class, () -> ProjectArtifacts.newBuilder().sharedJars(java.util.Arrays.asList((Path) null)));
+        ProjectArtifacts equivalent = ProjectArtifacts.newBuilder().sharedJars(List.of(source)).build();
+        assertEquals(equivalent, artifacts);
+        assertEquals(equivalent.hashCode(), artifacts.hashCode());
+        assertNotEquals(ProjectArtifacts.empty(), artifacts);
+        assertTrue(ProjectArtifacts.empty().getSharedJars().isEmpty());
+        assertTrue(artifacts.toString().contains("sharedJars="));
+    }
 
     @Test
     public void shouldExposeCompleteProjectAsOneAggregate() throws Exception {

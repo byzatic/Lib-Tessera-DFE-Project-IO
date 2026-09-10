@@ -41,4 +41,19 @@ public interface ProjectSaverInterface {
             List<Path> serviceJars,
             List<DslFileDataObject> dslFiles
     ) throws ProjectSavingException;
+    /** Saves all artifacts, including shared-resource JARs. */
+    default Path save(
+            Path projectDirectory,
+            ProjectGlobalDataObject global,
+            NodeContainerDataObject nodeContainer,
+            List<Path> moduleJars,
+            List<Path> serviceJars,
+            List<DslFileDataObject> dslFiles,
+            List<Path> sharedJars
+    ) throws ProjectSavingException {
+        if (sharedJars == null || !sharedJars.isEmpty()) {
+            throw new ProjectSavingException("Shared-resource JAR saving is not supported");
+        }
+        return save(projectDirectory, global, nodeContainer, moduleJars, serviceJars, dslFiles);
+    }
 }

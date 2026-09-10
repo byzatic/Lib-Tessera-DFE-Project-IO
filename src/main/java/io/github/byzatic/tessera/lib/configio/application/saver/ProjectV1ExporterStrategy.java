@@ -34,7 +34,8 @@ public final class ProjectV1ExporterStrategy implements ProjectExporterInterface
                     project.getNodeContainer(),
                     project.getModuleJars(),
                     project.getServiceJars(),
-                    project.getDslFiles()
+                    project.getDslFiles(),
+                    project.getSharedJars()
             );
             Files.move(archive, destination, StandardCopyOption.REPLACE_EXISTING);
             return destination;
