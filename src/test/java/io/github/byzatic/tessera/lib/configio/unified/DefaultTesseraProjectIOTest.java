@@ -6,6 +6,9 @@ import io.github.byzatic.tessera.lib.configio.unified.model.NodeId;
 import io.github.byzatic.tessera.lib.configio.unified.model.SaveProjectRequest;
 import io.github.byzatic.tessera.lib.configio.unified.model.SaveProjectResult;
 import io.github.byzatic.tessera.lib.configio.unified.model.ServiceMetadata;
+import io.github.byzatic.tessera.lib.configio.unified.model.RoutineMetadata;
+import io.github.byzatic.tessera.lib.configio.unified.spi.routine.BduiWidgetIds;
+import io.github.byzatic.tessera.lib.configio.unified.model.ConfigurationFileScope;
 import io.github.byzatic.tessera.lib.configio.unified.model.ServiceParameterType;
 import io.github.byzatic.tessera.lib.configio.unified.model.ServiceStorageRole;
 import io.github.byzatic.tessera.lib.configio.unified.model.TesseraProject;
@@ -152,6 +155,27 @@ public class DefaultTesseraProjectIOTest {
                 assertEquals(4, runtime.getAvailableRoutineNames().size());
                 assertEquals(1, runtime.getAvailableServiceNames().size());
                 assertEquals(1, runtime.getServiceMetadata().size());
+                RoutineMetadata routine = runtime.getRoutineMetadata().stream()
+                        .filter(metadata -> metadata.getId().equals(
+                                "GetDataWorkflowRoutine"
+                        ))
+                        .findFirst()
+                        .orElseThrow();
+                assertEquals(List.of(BduiWidgetIds.ROUTINE_CONFIGURATION_FILE),
+                        routine.getRoutineWidgetIds());
+                assertTrue(routine.getEnvironmentParameters().isEmpty());
+                assertEquals("configurationFilePath",
+                        routine.getConfigurationFileParameters().get(0).getKey());
+                assertEquals("GeneratorConfigurationFile.json",
+                        routine.getConfigurationFileParameters().get(0)
+                                .getSuggestedFileName());
+                assertEquals(List.of(".json"), routine.getConfigurationFileParameters()
+                        .get(0).getAllowedExtensions());
+                assertEquals(List.of(ConfigurationFileScope.NODE,
+                                ConfigurationFileScope.PROJECT_GLOBAL),
+                        routine.getConfigurationFileParameters().get(0).getAllowedScopes());
+                assertEquals(ConfigurationFileScope.NODE,
+                        routine.getConfigurationFileParameters().get(0).getDefaultScope());
                 ServiceMetadata service = runtime.getServiceMetadata().get(0);
                 assertEquals("PrometheusExportService", service.getId());
                 assertEquals("Prometheus Export", service.getDisplayName());

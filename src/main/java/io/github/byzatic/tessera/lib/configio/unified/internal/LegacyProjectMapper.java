@@ -21,6 +21,7 @@ import io.github.byzatic.tessera.lib.configio.domain.model.StorageDataObject;
 import io.github.byzatic.tessera.lib.configio.domain.model.WorkerDescriptionDataObject;
 import io.github.byzatic.tessera.lib.configio.unified.spi.routine.RoutineFunctionDescriptor;
 import io.github.byzatic.tessera.lib.configio.unified.model.ConfigurationFile;
+import io.github.byzatic.tessera.lib.configio.unified.model.ConfigurationFileScope;
 import io.github.byzatic.tessera.lib.configio.unified.model.DslSource;
 import io.github.byzatic.tessera.lib.configio.unified.model.NodeConfiguration;
 import io.github.byzatic.tessera.lib.configio.unified.model.NodeId;
@@ -30,6 +31,8 @@ import io.github.byzatic.tessera.lib.configio.unified.model.ProjectConfiguration
 import io.github.byzatic.tessera.lib.configio.unified.model.ProjectNode;
 import io.github.byzatic.tessera.lib.configio.unified.model.RoutineFunction;
 import io.github.byzatic.tessera.lib.configio.unified.model.RoutineMetadata;
+import io.github.byzatic.tessera.lib.configio.unified.model.RoutineEnvironmentParameter;
+import io.github.byzatic.tessera.lib.configio.unified.model.RoutineConfigurationFileParameter;
 import io.github.byzatic.tessera.lib.configio.unified.model.ServiceDefinition;
 import io.github.byzatic.tessera.lib.configio.unified.model.ServiceMetadata;
 import io.github.byzatic.tessera.lib.configio.unified.model.ServiceOption;
@@ -157,6 +160,38 @@ final class LegacyProjectMapper {
                 .description(text(metadata.getDescriptor().getDescription()))
                 .version(metadata.getVersion())
                 .artifact(metadata.getArtifact())
+                .routineWidgetIds(metadata.getDescriptor().getRoutineWidgetIds())
+                .environmentParameters(metadata.getDescriptor().getEnvironment().stream()
+                        .map(parameter -> RoutineEnvironmentParameter.newBuilder()
+                                .key(parameter.getKey())
+                                .displayName(parameter.getDisplayName())
+                                .description(text(parameter.getDescription()))
+                                .defaultValue(parameter.getDefaultValue())
+                                .required(parameter.isRequired())
+                                .build())
+                        .toList())
+                .allowCustomEnvironmentKeys(
+                        metadata.getDescriptor().isAllowCustomEnvironmentKeys()
+                )
+                .configurationFileParameters(
+                        metadata.getDescriptor().getConfigurationFiles().stream()
+                                .map(parameter -> RoutineConfigurationFileParameter.newBuilder()
+                                        .key(parameter.getKey())
+                                        .displayName(parameter.getDisplayName())
+                                        .description(text(parameter.getDescription()))
+                                        .suggestedFileName(parameter.getSuggestedFileName())
+                                        .allowedExtensions(parameter.getAllowedExtensions())
+                                        .allowedScopes(parameter.getAllowedScopes().stream()
+                                                .map(scope -> ConfigurationFileScope.valueOf(
+                                                        scope.name()
+                                                ))
+                                                .toList())
+                                        .defaultScope(ConfigurationFileScope.valueOf(
+                                                parameter.getDefaultScope().name()
+                                        ))
+                                        .required(parameter.isRequired())
+                                        .build())
+                                .toList())
                 .functions(metadata.getDescriptor().getFunctions().stream()
                         .map(this::mapRoutineFunction).toList())
                 .build()).toList();

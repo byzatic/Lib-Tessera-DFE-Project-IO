@@ -8,6 +8,8 @@ import io.github.byzatic.tessera.lib.configio.support.TestProjectFixture;
 import org.junit.Test;
 
 import java.util.List;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -31,8 +33,8 @@ public class RoutineEditorMetadataLoaderStrategyTest {
 
             assertEquals(1, available.size());
             RoutineEditorMetadataDataObject metadata = available.get(0);
-            assertEquals("DataEnrichmentWorkflowRoutine", metadata.getRoutineId());
-            assertEquals("Data Enrichment", metadata.getDescriptor().getDisplayName());
+            assertEquals("GetDataWorkflowRoutine", metadata.getRoutineId());
+            assertEquals("Get Data", metadata.getDescriptor().getDisplayName());
             assertEquals("1.2.3", metadata.getVersion());
             assertEquals("test-workflow-routines.jar", metadata.getArtifactFileName());
             assertEquals(
@@ -40,10 +42,10 @@ public class RoutineEditorMetadataLoaderStrategyTest {
                     metadata.getDescriptor().getFunctions().get(0).getBduiWidgetIds()
             );
             assertEquals(
-                    List.of("DataId"),
+                    List.of(),
                     metadata.getDescriptor().getFunctions().get(0).getArgumentIds()
             );
-            assertTrue(loader.findMetadata("DataEnrichmentWorkflowRoutine").isPresent());
+            assertTrue(loader.findMetadata("GetDataWorkflowRoutine").isPresent());
             assertFalse(loader.findMetadata("UnknownRoutine").isPresent());
         }
     }
@@ -80,7 +82,32 @@ public class RoutineEditorMetadataLoaderStrategyTest {
                     )
             );
 
-            assertTrue(failure.getMessage().contains("DataEnrichmentWorkflowRoutine"));
+            assertTrue(failure.getMessage().contains("GetDataWorkflowRoutine"));
+        }
+    }
+
+    @Test
+    public void shouldLoadProviderCompiledAgainstPreviousUnifiedApi() throws Exception {
+        Path directory = Files.createTempDirectory("legacy-unified-routine-");
+        Path jar = directory.resolve("legacy-unified-routine-provider.jar");
+        try (var input = getClass().getResourceAsStream(
+                "/legacy-unified-routine-provider.jar"
+        )) {
+            Files.copy(java.util.Objects.requireNonNull(input), jar);
+        }
+        try (RoutineEditorMetadataLoaderInterface loader =
+                     RoutineEditorMetadataLoaderFactory.create(directory, (ClassLoader) null)) {
+            RoutineEditorMetadataDataObject metadata = loader.getAvailableMetadata().get(0);
+
+            assertEquals("LegacyUnifiedRoutine", metadata.getRoutineId());
+            assertEquals(List.of(), metadata.getDescriptor().getRoutineWidgetIds());
+            assertEquals(List.of(), metadata.getDescriptor().getEnvironment());
+            assertEquals(List.of(), metadata.getDescriptor().getConfigurationFiles());
+            assertEquals(List.of("FuncENV"), metadata.getDescriptor().getFunctions()
+                    .get(0).getBduiWidgetIds());
+        } finally {
+            Files.deleteIfExists(jar);
+            Files.deleteIfExists(directory);
         }
     }
 }
