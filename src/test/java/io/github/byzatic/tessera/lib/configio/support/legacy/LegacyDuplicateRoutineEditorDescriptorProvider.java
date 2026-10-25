@@ -12,8 +12,8 @@ public final class LegacyDuplicateRoutineEditorDescriptorProvider
     @Override
     public RoutineEditorDescriptor getDescriptor() {
         return RoutineEditorDescriptor.newBuilder()
-                .routineId("DataEnrichmentWorkflowRoutine")
-                .displayName("Duplicate Data Enrichment")
+                .routineId("GetDataWorkflowRoutine")
+                .displayName("Duplicate Get Data")
                 .functions(List.of())
                 .build();
     }

@@ -7,11 +7,13 @@ import java.util.Objects;
 /** Immutable plugin artifacts and DSL sources stored with a project. */
 public final class ProjectArtifacts {
 
+    private final List<Path> sharedJars;
     private final List<Path> routineJars;
     private final List<Path> serviceJars;
     private final List<DslSource> dslSources;
 
     private ProjectArtifacts(Builder builder) {
+        this.sharedJars = copyPaths(builder.sharedJars, "sharedJars");
         this.routineJars = copyPaths(builder.routineJars, "routineJars");
         this.serviceJars = copyPaths(builder.serviceJars, "serviceJars");
         this.dslSources = List.copyOf(Objects.requireNonNull(builder.dslSources, "dslSources"));
@@ -23,6 +25,11 @@ public final class ProjectArtifacts {
     /** Returns a new builder for ProjectArtifacts. */
     public static Builder newBuilder() {
         return new Builder();
+    }
+
+    /** Returns immutable, normalized shared-resource JAR paths. */
+    public List<Path> getSharedJars() {
+        return sharedJars;
     }
 
     /** Returns the normalized workflow-routine JAR paths. */
@@ -61,20 +68,22 @@ public final class ProjectArtifacts {
             return false;
         }
         ProjectArtifacts that = (ProjectArtifacts) object;
-        return Objects.equals(routineJars, that.routineJars)
+        return Objects.equals(sharedJars, that.sharedJars)
+                && Objects.equals(routineJars, that.routineJars)
                 && Objects.equals(serviceJars, that.serviceJars)
                 && Objects.equals(dslSources, that.dslSources);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(routineJars, serviceJars, dslSources);
+        return Objects.hash(sharedJars, routineJars, serviceJars, dslSources);
     }
 
     @Override
     public String toString() {
         return "ProjectArtifacts{" +
-                "routineJars=" + routineJars
+                "sharedJars=" + sharedJars
+                 + ", routineJars=" + routineJars
                  + ", serviceJars=" + serviceJars
                  + ", dslSources=" + dslSources +
                 '}';
@@ -83,11 +92,21 @@ public final class ProjectArtifacts {
     /** Fluent builder for immutable ProjectArtifacts values. */
     public static final class Builder {
 
+        private List<Path> sharedJars = List.of();
         private List<Path> routineJars = List.of();
         private List<Path> serviceJars = List.of();
         private List<DslSource> dslSources = List.of();
 
         private Builder() {
+        }
+
+        /**
+         * Sets shared-resource JARs to copy into {@code modules/shared/}.
+         * Paths are normalized at build time; the list and its elements must be non-null.
+         */
+        public Builder sharedJars(List<Path> value) {
+            this.sharedJars = List.copyOf(Objects.requireNonNull(value, "sharedJars"));
+            return this;
         }
 
         /** Sets the normalized workflow-routine JAR paths. */

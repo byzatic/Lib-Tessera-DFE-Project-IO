@@ -1,12 +1,7 @@
-# Единый API проектов Tessera
+# Unified API
 
-Каталог `unified` — изолированный миграционный слой над текущей реализацией config-io.
-Он пока не заменяет и не изменяет существующий API библиотеки.
-
-## Основная точка входа
-
-`TesseraProjectIO` — единый прикладной фасад. Стандартную реализацию создаёт публичный
-composition root `TesseraProjectIOFactory`:
+Публичный API библиотеки находится в пакете
+`io.github.byzatic.tessera.lib.configio.unified`. Основная точка входа — `TesseraProjectIO`:
 
 ```java
 TesseraProjectIO projectIO = TesseraProjectIOFactory.createDefault();
@@ -22,105 +17,38 @@ Path archive = projectIO.exportProject(
 );
 ```
 
-Фасад поддерживает загрузку, сохранение, ZIP-экспорт, подготовку runtime-ресурсов и наблюдение
-за ревизиями проекта.
-
-## Создание моделей через Builder
-
-Все пользовательские модели — обычные неизменяемые `final` классы. Каждый объект создаётся через fluent builder:
+Дополнительные файлы передаются в сохранение и экспорт через `ProjectArtifacts`:
 
 ```java
-NodeId nodeId = NodeId.newBuilder()
-        .value("root:main")
-        .build();
-
-Pipeline pipeline = Pipeline.newBuilder()
-        .stages(List.of(
-                PipelineStage.newBuilder()
-                        .id("collect")
-                        .position(1)
-                        .workers(List.of())
-                        .build()
-        ))
-        .build();
-
-ProjectNode node = ProjectNode.newBuilder()
-        .nodeId(nodeId)
-        .id("root")
-        .name("main")
-        .description("Главный узел")
-        .downstream(List.of())
-        .configuration(NodeConfiguration.newBuilder().build())
-        .pipeline(pipeline)
-        .build();
-
-TesseraProject project = TesseraProject.newBuilder()
-        .formatVersion("v1.0.0-SingleRootStrictNestedNodeTree")
-        .name("MyProject")
-        .configuration(ProjectConfiguration.newBuilder().build())
-        .nodes(Map.of(nodeId, node))
+ProjectArtifacts artifacts = ProjectArtifacts.newBuilder()
+        .sharedJars(sharedJars)
+        .routineJars(routineJars)
+        .serviceJars(serviceJars)
+        .dslSources(dslSources)
         .build();
 ```
 
-Коллекции копируются при построении и наружу возвращаются в неизменяемом виде. Для data-классов
-реализованы `equals`, `hashCode` и `toString`.
+`sharedJars` сохраняются в `modules/shared/`, `routineJars` — в
+`modules/workflow_routines/`, `serviceJars` — в `modules/services/`. Все они включаются в
+создаваемый ZIP.
 
-## Runtime-ресурсы
-
-Когда нужны исполняемые workflow routines и services, используется `ProjectRuntimeSession`:
+Исполняемые плагины и их метаданные доступны через закрываемую `ProjectRuntimeSession`:
 
 ```java
 try (ProjectRuntimeSession runtime = projectIO.openRuntime(projectDirectory)) {
-    Set<String> routines = runtime.getAvailableRoutineNames();
-    Set<String> services = runtime.getAvailableServiceNames();
-    List<RoutineMetadata> routineMetadata = runtime.getRoutineMetadata();
-    List<ServiceMetadata> serviceMetadata = runtime.getServiceMetadata();
+    runtime.getAvailableRoutineNames();
+    runtime.getAvailableServiceNames();
+    runtime.getRoutineMetadata();
+    runtime.getServiceMetadata();
 }
 ```
 
-`ServiceMetadata` содержит отображаемое имя, описание, версию и путь service JAR, а также
-immutable-список `ServiceParameterMetadata`. Параметр объявляет тип значения, default,
-варианты `SELECT` и `ServiceStorageRole`, по которому UI отличает выбор входного и выходного
-хранилища от обычного параметра.
+ZIP-ревизии отслеживаются через `TesseraProjectIO.watchRevisions(...)`. Возвращаемая
+`ProjectRevisionSubscription`, каждый полученный `ProjectRevisionHandle` и открытая runtime-сессия
+имеют явный жизненный цикл и должны закрываться владельцем.
 
-Чистая модель `TesseraProject` не содержит class loader и не требует вызова `close()`.
+Пользовательские модели находятся в `unified.model`, являются неизменяемыми и создаются через
+`newBuilder()`. SPI редакторских метаданных находится в `unified.spi.routine` и
+`unified.spi.service`. Содержимое `unified.internal` является деталью реализации.
 
-## SPI метаданных редактора
-
-Routine- и service-модули публикуют метаданные редактора через JDK-only контракты:
-
-```text
-io.github.byzatic.tessera.lib.configio.unified.spi.routine
-io.github.byzatic.tessera.lib.configio.unified.spi.service
-```
-
-Descriptor-модели неизменяемы и создаются через `newBuilder()`. Провайдер регистрируется
-по полному имени интерфейса, например:
-
-```text
-META-INF/services/io.github.byzatic.tessera.lib.configio.unified.spi.routine.RoutineEditorDescriptorProvider
-```
-
-Пакеты `routine_spi` и `service_spi` продолжают загружаться как compatibility API для JAR,
-созданных до появления unified SPI. Новые модули должны использовать только `unified.spi`.
-
-## Владение ресурсами
-
-- `TesseraProjectIO` не хранит состояние и не требует закрытия.
-- `ProjectRuntimeSession` владеет class loader’ами модулей, сервисов, metadata и shared resources.
-- `ProjectRevisionSubscription` владеет polling executor.
-- Listener принимает владение каждым полученным `ProjectRevisionHandle`.
-- Revision handle владеет распакованным каталогом и открытой через него runtime session.
-
-Runtime session необходимо закрывать после остановки engine runtime. Revision handle необходимо
-закрывать после runtime session. Реализация handle дополнительно соблюдает этот порядок при своём
-закрытии.
-
-## Граница текущей реализации
-
-`unified.internal.DefaultTesseraProjectIO` — внутренний совместимый адаптер. Публичный
-`TesseraProjectIOFactory` выбирает и создаёт его в composition root. Адаптер вызывает существующие
-V1 factory/strategy и преобразует legacy `*DataObject` в новый агрегат и обратно.
-
-Остальные классы из `unified.internal` не являются пользовательским API. После принятия
-архитектуры стандартную реализацию можно перенести в окончательный composition-root пакет.
+Полная документация и примеры находятся в корневом [README](../../../../../../../../../../README.md).

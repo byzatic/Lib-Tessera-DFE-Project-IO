@@ -1,117 +1,318 @@
 # Lib-Tessera-DFE-Project-IO
 
-Java-библиотека ввода-вывода конфигурации проектов Tessera DFE. Она читает и записывает проект формата `v1.0.0-SingleRootStrictNestedNodeTree`, упаковывает проект в ZIP, загружает JAR-модули и сервисы через Java SPI и умеет отслеживать новые ревизии проекта в ZIP-архиве.
+Java-библиотека для загрузки, изменения, сохранения, запуска и отслеживания проектов Tessera DFE.
+Публичный прикладной API находится в пакете
+`io.github.byzatic.tessera.lib.configio.unified`. Все операции с проектом выполняются через
+единый фасад `TesseraProjectIO`.
+
+Библиотека поддерживает формат `v1.0.0-SingleRootStrictNestedNodeTree`, Java 17 и Maven.
 
 ## Возможности
 
-- загрузка полного проекта из каталога в неизменяемую доменную модель;
-- сохранение доменной модели в JSON и создание ZIP-архива;
-- копирование JAR-файлов workflow-модулей и сервисов в проект;
-- построение цепочки class loader'ов для общих JAR-зависимостей;
-- обнаружение фабрик модулей и сервисов через `ServiceLoader`;
-- загрузка декларативных метаданных workflow-рутин для редактора без создания runtime-рутин;
-- polling ZIP-файла, проверка стабильности и публикация изолированных ревизий;
-- защита распаковки от Zip Slip, чрезмерного числа файлов и слишком большого распакованного размера.
-
-Требуется Java 17. Сборка выполняется Maven.
+- загрузка проекта из каталога в неизменяемый `TesseraProject`;
+- сохранение каталога проекта и создание сопутствующего ZIP-архива;
+- экспорт проекта непосредственно в ZIP;
+- добавление shared-resource, workflow-routine и service JAR;
+- сохранение DSL-файлов узлов;
+- обнаружение routines и services через Java SPI;
+- чтение метаданных плагинов и создание runtime-экземпляров;
+- наблюдение за стабильными ревизиями ZIP с проверками безопасности при распаковке.
 
 ## Подключение
-
-Текущие Maven-координаты:
 
 ```xml
 <dependency>
     <groupId>io.github.byzatic</groupId>
     <artifactId>lib-tessera-dfe-project-io</artifactId>
-    <version>0.0.1</version>
+    <version>0.0.5</version>
 </dependency>
 ```
 
-Для установки библиотеки в локальный Maven-репозиторий:
+Для установки текущей версии в локальный Maven-репозиторий:
 
 ```shell
 mvn install -DskipTests -Dgpg.skip=true
 ```
 
-## Быстрый старт: загрузка проекта
+## Основная точка входа
 
-Основная точка входа — `ProjectV1LoaderFactory`. Результат загрузки владеет class loader'ами общих ресурсов, поэтому его необходимо закрывать.
+Стандартную реализацию `TesseraProjectIO` создаёт `TesseraProjectIOFactory`:
 
 ```java
-import loader.application.io.github.byzatic.tessera.lib.configio.ProjectLoaderInterface;
-import model.domain.io.github.byzatic.tessera.lib.configio.ProjectLoadResultDataObject;
-import factory.infrastructure.io.github.byzatic.tessera.lib.configio.ProjectV1LoaderFactory;
+import io.github.byzatic.tessera.lib.configio.unified.TesseraProjectIO;
+import io.github.byzatic.tessera.lib.configio.unified.TesseraProjectIOFactory;
+
+TesseraProjectIO projectIO = TesseraProjectIOFactory.createDefault();
+```
+
+Фасад не владеет ресурсами и не требует закрытия. Если приложению нужны собственные class loader'ы
+для поиска runtime-плагинов, их можно передать при создании фасада:
+
+```java
+TesseraProjectIO projectIO = TesseraProjectIOFactory
+        .createWithPreloadedClassLoaders(preloadedClassLoaders);
+```
+
+## Загрузка проекта
+
+`loadProject` возвращает отделённую от файловой системы неизменяемую модель. Она не содержит
+class loader'ов и не требует вызова `close()`.
+
+```java
+import io.github.byzatic.tessera.lib.configio.unified.model.TesseraProject;
 
 import java.nio.file.Path;
 
-ProjectLoaderInterface loader = ProjectV1LoaderFactory.create();
+TesseraProject project = projectIO.loadProject(Path.of("MyProject"));
 
-try(
-ProjectLoadResultDataObject project = loader.load(Path.of("MyProject"))){
-String projectName = project
-        .getNodeContainer()
-        .getProjectStructure()
-        .getProject()
-        .getProjectName();
-
-    System.out.
-
-println(projectName);
-    System.out.
-
-println(project.getGlobal().
-
-getServices().
-
-size());
-        }
+System.out.println(project.getName());
+System.out.println(project.getNodes().size());
+System.out.println(project.getConfiguration().getServices().size());
 ```
 
-Если приложению уже доступны собственные class loader'ы, их можно поставить перед JAR-файлами из `modules/shared`:
+## Сохранение проекта и артефактов
+
+`saveProject` записывает каталог проекта и создаёт рядом архив `<имя-каталога>.zip`.
+Дополнительные артефакты передаются единым объектом `ProjectArtifacts`:
 
 ```java
-ProjectLoaderInterface loader = ProjectV1LoaderFactory.create(preloadedClassLoaders);
-```
-
-## Быстрый старт: сохранение проекта
-
-`ProjectV1SaverFactory` записывает JSON-файлы, при необходимости копирует JAR-файлы и всегда создаёт ZIP рядом с каталогом проекта. Возвращаемое значение — путь к архиву `<имя-каталога>.zip`.
-
-```java
-import saver.application.io.github.byzatic.tessera.lib.configio.ProjectSaverInterface;
-import factory.infrastructure.io.github.byzatic.tessera.lib.configio.ProjectV1SaverFactory;
+import io.github.byzatic.tessera.lib.configio.unified.model.DslSource;
+import io.github.byzatic.tessera.lib.configio.unified.model.ProjectArtifacts;
+import io.github.byzatic.tessera.lib.configio.unified.model.SaveProjectRequest;
+import io.github.byzatic.tessera.lib.configio.unified.model.SaveProjectResult;
 
 import java.nio.file.Path;
 import java.util.List;
 
-ProjectSaverInterface saver = ProjectV1SaverFactory.create();
+ProjectArtifacts artifacts = ProjectArtifacts.newBuilder()
+        .sharedJars(List.of(Path.of("plugins/shared-resources.jar")))
+        .routineJars(List.of(Path.of("plugins/my-routine.jar")))
+        .serviceJars(List.of(Path.of("plugins/my-service.jar")))
+        .dslSources(List.of(
+                DslSource.newBuilder()
+                        .nodeId(nodeId)
+                        .baseName("worker-config")
+                        .content(dslContent)
+                        .build()
+        ))
+        .build();
 
-Path archive = saver.save(
-        projectDirectory,
-        projectGlobal,
-        nodeContainer,
-        List.of(Path.of("plugins/MyRoutine.jar")),
-        List.of(Path.of("plugins/MyService.jar"))
+SaveProjectResult result = projectIO.saveProject(
+        SaveProjectRequest.newBuilder()
+                .projectDirectory(Path.of("output/MyProject"))
+                .project(project)
+                .artifacts(artifacts)
+                .build()
+);
+
+System.out.println(result.getProjectDirectory());
+System.out.println(result.getArchive());
+```
+
+Артефакты копируются в следующие каталоги:
+
+| Поле `ProjectArtifacts` | Каталог проекта |
+|---|---|
+| `sharedJars` | `modules/shared/` |
+| `routineJars` | `modules/workflow_routines/` |
+| `serviceJars` | `modules/services/` |
+| `dslSources` | `data/nodes/<узел>/configuration_files/*.mcg3dsl` |
+
+Списки артефактов по умолчанию пусты. Если дополнительные файлы не нужны, используйте короткую
+форму:
+
+```java
+SaveProjectResult result = projectIO.saveProject(
+        SaveProjectRequest.of(Path.of("output/MyProject"), project)
 );
 ```
 
-Также доступны перегрузки `save(ProjectLoadResultDataObject)` и `save(...)` без JAR-файлов.
+## Экспорт в ZIP
 
-Для пользовательского экспорта только в ZIP используйте `ProjectV1ExporterFactory`. Экспортёр
-сам создаёт и удаляет временный каталог, записывает DSL-файлы с фиксированным расширением
-`.mcg3dsl` и оставляет только архив в указанном месте:
+`exportProject` создаёт проект во временном каталоге и оставляет только ZIP в указанном месте.
+Расширение `.zip` добавляется автоматически, если оно отсутствует. Для экспорта используются те же
+`ProjectArtifacts`, поэтому shared JAR также попадают в архив под `modules/shared/`.
 
 ```java
-ProjectExporterInterface exporter = ProjectV1ExporterFactory.create();
-Path archive = exporter.export(new ProjectExportDataObject(
-        Path.of("delivery/MyProject.zip"),
-        projectGlobal,
-        nodeContainer,
-        moduleJars,
-        serviceJars,
-        List.of(new DslFileDataObject(nodeReference, "worker-id", dslContent))
-));
+import io.github.byzatic.tessera.lib.configio.unified.model.ExportProjectRequest;
+
+import java.nio.file.Path;
+
+Path archive = projectIO.exportProject(
+        ExportProjectRequest.newBuilder()
+                .archiveDestination(Path.of("delivery/MyProject.zip"))
+                .project(project)
+                .artifacts(artifacts)
+                .build()
+);
 ```
+
+Без дополнительных артефактов:
+
+```java
+Path archive = projectIO.exportProject(
+        ExportProjectRequest.of(Path.of("delivery/MyProject.zip"), project)
+);
+```
+
+## Создание модели проекта
+
+Все модели в `unified.model` являются неизменяемыми `final`-классами и создаются через builder.
+Входные коллекции копируются, а наружу возвращаются неизменяемые значения.
+
+```java
+import io.github.byzatic.tessera.lib.configio.unified.model.NodeConfiguration;
+import io.github.byzatic.tessera.lib.configio.unified.model.NodeId;
+import io.github.byzatic.tessera.lib.configio.unified.model.Pipeline;
+import io.github.byzatic.tessera.lib.configio.unified.model.PipelineStage;
+import io.github.byzatic.tessera.lib.configio.unified.model.ProjectConfiguration;
+import io.github.byzatic.tessera.lib.configio.unified.model.ProjectNode;
+import io.github.byzatic.tessera.lib.configio.unified.model.TesseraProject;
+
+import java.util.List;
+import java.util.Map;
+
+NodeId nodeId = NodeId.newBuilder()
+        .value("root:main")
+        .build();
+
+Pipeline pipeline = Pipeline.newBuilder()
+        .stages(List.of(
+                PipelineStage.newBuilder()
+                        .id("collect")
+                        .position(1)
+                        .workers(List.of())
+                        .build()
+        ))
+        .build();
+
+ProjectNode node = ProjectNode.newBuilder()
+        .nodeId(nodeId)
+        .id("root")
+        .name("main")
+        .description("Главный узел")
+        .downstream(List.of())
+        .configuration(NodeConfiguration.newBuilder().build())
+        .pipeline(pipeline)
+        .build();
+
+TesseraProject project = TesseraProject.newBuilder()
+        .formatVersion("v1.0.0-SingleRootStrictNestedNodeTree")
+        .name("MyProject")
+        .configuration(ProjectConfiguration.newBuilder().build())
+        .nodes(Map.of(nodeId, node))
+        .build();
+```
+
+## Runtime-плагины и метаданные
+
+Для работы с routines, services и их метаданными откройте `ProjectRuntimeSession`. Сессия владеет
+class loader'ами проекта и должна быть закрыта после остановки использующего её runtime.
+
+```java
+import io.github.byzatic.tessera.lib.configio.unified.ProjectRuntimeSession;
+import io.github.byzatic.tessera.lib.configio.unified.RoutineCreationRequest;
+import io.github.byzatic.tessera.lib.configio.unified.ServiceCreationRequest;
+
+import java.nio.file.Path;
+
+try (ProjectRuntimeSession runtime = projectIO.openRuntime(Path.of("MyProject"))) {
+    System.out.println(runtime.getAvailableRoutineNames());
+    System.out.println(runtime.getAvailableServiceNames());
+    System.out.println(runtime.getRoutineMetadata());
+    System.out.println(runtime.getServiceMetadata());
+
+    var routine = runtime.createRoutine(
+            RoutineCreationRequest.newBuilder()
+                    .routineName("MyRoutine")
+                    .api(routineApi)
+                    .health(routineHealth)
+                    .build()
+    );
+
+    var service = runtime.createService(
+            ServiceCreationRequest.newBuilder()
+                    .serviceName("MyService")
+                    .api(serviceApi)
+                    .health(serviceHealth)
+                    .build()
+    );
+
+    runEngine(routine, service);
+}
+```
+
+Routine- и service-JAR публикуют редакторские метаданные через JDK SPI из пакетов:
+
+```text
+io.github.byzatic.tessera.lib.configio.unified.spi.routine
+io.github.byzatic.tessera.lib.configio.unified.spi.service
+```
+
+Провайдер routine регистрируется в:
+
+```text
+META-INF/services/io.github.byzatic.tessera.lib.configio.unified.spi.routine.RoutineEditorDescriptorProvider
+```
+
+Провайдер service регистрируется аналогично:
+
+```text
+META-INF/services/io.github.byzatic.tessera.lib.configio.unified.spi.service.ServiceEditorDescriptorProvider
+```
+
+Descriptor-модели неизменяемы и создаются через `newBuilder()`.
+
+## Отслеживание ревизий ZIP
+
+`watchRevisions` следит за ZIP-файлом, ждёт стабильного состояния, проверяет архив и публикует
+изолированную ревизию. Возвращаемая подписка останавливает polling при закрытии.
+
+```java
+import io.github.byzatic.tessera.lib.configio.unified.ProjectRevisionError;
+import io.github.byzatic.tessera.lib.configio.unified.ProjectRevisionHandle;
+import io.github.byzatic.tessera.lib.configio.unified.ProjectRevisionListener;
+import io.github.byzatic.tessera.lib.configio.unified.ProjectRevisionSubscription;
+import io.github.byzatic.tessera.lib.configio.unified.ProjectRevisionWatchRequest;
+
+import java.nio.file.Path;
+import java.time.Duration;
+
+ProjectRevisionWatchRequest watchRequest = ProjectRevisionWatchRequest.builder(
+                Path.of("deploy/MyProject.zip"),
+                Path.of("runtime/revisions")
+        )
+        .pollInterval(Duration.ofSeconds(1))
+        .stableObservationCount(2)
+        .maximumEntryCount(100_000)
+        .maximumExpandedBytes(1024L * 1024L * 1024L)
+        .build();
+
+try (ProjectRevisionSubscription subscription = projectIO.watchRevisions(
+        watchRequest,
+        new ProjectRevisionListener() {
+            @Override
+            public void onRevisionAvailable(ProjectRevisionHandle revision) {
+                // Listener получает владение handle и закрывает его после использования.
+                activate(revision);
+            }
+
+            @Override
+            public void onRevisionRejected(ProjectRevisionError error) {
+                error.getCause().printStackTrace();
+            }
+        }
+)) {
+    awaitShutdown();
+}
+```
+
+`ProjectRevisionHandle` предоставляет SHA-256 идентификатор, распакованный каталог,
+`TesseraProject` и `openRuntime()`. Получатель callback'а отвечает за закрытие handle; при закрытии
+освобождаются runtime-ресурсы и удаляется каталог ревизии.
+
+Значения наблюдателя по умолчанию: интервал 1 секунда, 2 стабильных наблюдения, максимум 100 000
+записей и 1 GiB распакованных данных.
 
 ## Формат каталога проекта
 
@@ -132,223 +333,28 @@ MyProject/
     └── services/
 ```
 
-Для узла с `id == "#NAMED"` каталог называется только `<name>`, для остальных — `<id>-<name>`. Имя не должно позволять выйти за пределы `data/nodes`.
+Для узла с `id == "#NAMED"` каталог называется `<name>`, для остальных — `<id>-<name>`.
+Поддерживается одно связное дерево с одним корнем, без циклов, повторных узлов и нескольких
+родителей у одного узла.
 
-`Project.json` содержит имя, версию конфигурации и вложенное дерево узлов. Поддерживается ровно одно связное дерево: один корень, без циклов, повторных узлов и узлов с несколькими родителями.
+## Публичные unified-типы
 
-## Основные интерфейсы
-
-| Интерфейс | Назначение | Основные методы |
-|---|---|---|
-| `ProjectLoaderInterface` | Загрузка проекта из каталога | `load(Path)` |
-| `ProjectSaverInterface` | Запись проекта и создание ZIP | перегрузки `save(...)`, включая DSL-файлы |
-| `ProjectExporterInterface` | Экспорт проекта только в целевой ZIP | `export(ProjectExportDataObject)` |
-| `DslFileSaverInterface` | Запись `.mcg3dsl` перед архивацией | `save(...)` |
-| `ProjectArchiverInterface` | Архивация готового каталога | `archive(Path)` |
-| `ModuleLoaderInterface` | Поиск и создание workflow-модулей | `getAvailableModuleNames()`, `getModule(...)`, `close()` |
-| `RoutineEditorMetadataLoaderInterface` | Чтение функций, аргументов и BDUI-виджетов рутин | `getAvailableMetadata()`, `findMetadata(...)`, `close()` |
-| `ModuleSaverInterface` | Копирование JAR модуля | `save(moduleJar, projectDirectory)` |
-| `ServiceLoaderInterface` | Поиск и создание сервисов | `getAvailableServiceNames()`, `getService(...)`, `close()` |
-| `ServiceEditorMetadataLoaderInterface` | Чтение параметров редактора сервисов | `getAvailableMetadata()`, `findMetadata(...)`, `close()` |
-| `ServiceSaverInterface` | Копирование JAR сервиса | `save(serviceJar, projectDirectory)` |
-| `ProjectRevisionSource` | Наблюдение за ZIP и публикация ревизий | `start(listener)`, `close()` |
-| `ProjectRevisionListener` | Получение ревизии либо ошибки подготовки | `onRevisionAvailable(...)`, `onRevisionRejected(...)` |
-
-Низкоуровневые DAO-контракты позволяют заменить JSON и class loader инфраструктуру:
-
-| Интерфейс | Данные |
+| Тип | Назначение |
 |---|---|
-| `ProjectDaoInterface` | `Project.json` и структура графа |
-| `ProjectGlobalDaoInterface` | `Global.json` |
-| `NodeGlobalDaoInterface` | `global.json` каждого узла |
-| `PipelineDaoInterface` | `pipeline.json` каждого узла |
-| `SharedResourcesDaoInterface` | JAR-файлы из `modules/shared` |
+| `TesseraProjectIO` | загрузка, сохранение, экспорт, runtime и ревизии |
+| `TesseraProjectIOFactory` | создание стандартного фасада |
+| `TesseraProject` | полный неизменяемый проект |
+| `SaveProjectRequest`, `SaveProjectResult` | команда и результат сохранения |
+| `ExportProjectRequest` | команда ZIP-экспорта |
+| `ProjectArtifacts` | shared/routine/service JAR и DSL-исходники |
+| `ProjectRuntimeSession` | project-scoped плагины и метаданные |
+| `ProjectRevisionWatchRequest` | политика polling и безопасной распаковки |
+| `ProjectRevisionSubscription` | жизненный цикл наблюдателя |
+| `ProjectRevisionHandle` | изолированная подготовленная ревизия |
+| `TesseraProjectException` | единая ошибка операции с указанием типа операции и пути |
 
-Стандартные реализации создаются фабриками `ProjectV1LoaderFactory`, `ProjectV1SaverFactory`, `ProjectV1ExporterFactory`, `ModuleLoaderFactory`, `RoutineEditorMetadataLoaderFactory`, `ModuleSaverFactory`, `ServiceLoaderFactory`, `ServiceEditorMetadataLoaderFactory`, `ServiceSaverFactory` и `ProjectRevisionSourceFactory`.
-
-## Основные классы
-
-| Класс | Роль |
-|---|---|
-| `ProjectV1LoaderStrategy` | Координирует DAO, проверяет каталог и поддерживаемую версию, собирает `ProjectLoadResultDataObject` |
-| `ProjectV1SaverStrategy` | Валидирует модель, записывает все части проекта, добавляет JAR и запускает архивацию |
-| `ProjectV1ExporterStrategy` | Собирает проект во временном каталоге и переносит только готовый ZIP в целевой путь |
-| `DslFileSaverStrategy` | Записывает содержимое DSL в `configuration_files/*.mcg3dsl` до архивации |
-| `GsonProjectDao` | Читает и пишет `data/Project.json` |
-| `GsonProjectGlobalDao` | Читает и пишет `data/Global.json` |
-| `GsonNodeGlobalDao` | Читает и пишет `global.json` узлов |
-| `GsonPipelineDao` | Читает и пишет `pipeline.json` узлов |
-| `UrlClassLoaderSharedResourcesDao` | Загружает отсортированные JAR-файлы из `modules/shared` в последовательную цепочку class loader'ов |
-| `ModuleLoaderStrategy`, `ServiceLoaderStrategy` | Обнаруживают SPI-фабрики и создают экземпляры плагинов |
-| `RoutineEditorMetadataLoaderStrategy` | Загружает SPI-дескрипторы редактора, версию manifest и путь JAR, не создавая runtime-рутину |
-| `ServiceEditorMetadataLoaderStrategy` | Загружает SPI-дескрипторы параметров сервиса, версию manifest и путь JAR, не создавая runtime-сервис |
-| `ModuleSaverStrategy`, `ServiceSaverStrategy` | Копируют JAR в соответствующие каталоги проекта |
-| `ZipProjectArchiverStrategy` | Создаёт ZIP-архив каталога проекта |
-| `PollingZipProjectRevisionSource` | Реализация polling-источника ZIP-ревизий |
-| `ZipProjectRevisionSourceConfiguration` | Неизменяемая конфигурация путей, интервала и ограничений источника |
-| `ProjectRevision` | Загруженный изолированный snapshot; закрывает проект и удаляет временный каталог |
-| `ProjectRevisionFailure` | Описание отклонённой ревизии: архив, SHA-256 (если рассчитан) и причина |
-
-Классы `infrastructure.factory` — рекомендуемые точки создания готовых реализаций. Прямое создание strategy/DAO имеет смысл при ручной сборке зависимостей или замене отдельных адаптеров.
-
-## Доменная модель (DTO)
-
-Публичная модель находится в пакете `io.github.byzatic.lib.configio.domain.model`. Коллекции в ней копируются при создании и возвращаются как неизменяемые.
-
-| DTO | Содержимое |
-|---|---|
-| `ProjectLoadResultDataObject` | каталог проекта, глобальная конфигурация, контейнер узлов, общие ресурсы; реализует `AutoCloseable` |
-| `ProjectDataObject` | `projectConfigVersion`, `projectName` |
-| `ProjectStructureDataObject` | метаданные проекта и `Map<GraphNodeReferenceDataObject, NodeDataObject>` |
-| `GraphNodeReferenceDataObject` | UUID-ссылка на узел; реализует value equality и используется ключом map |
-| `NodeDataObject` | UUID, id, имя, описание и ссылки на downstream-узлы |
-| `NodeContainerDataObject` | структура проекта, глобальные настройки и pipeline каждого узла |
-| `ProjectGlobalDataObject` | глобальные хранилища и сервисы |
-| `NodeGlobalDataObject` | хранилища конкретного узла |
-| `StorageDataObject` | параметры, описание и `idName` хранилища |
-| `ServiceDataObject` | параметры, описание и `idName` сервиса |
-| `ConfigurationOptionDataObject` | `value`, `key`, `data`, `name` параметра |
-| `PipelineDataObject` | порядок стадий и описания стадий |
-| `StageConsistencyDataObject` | `stageId` и позиция стадии |
-| `StageDescriptionDataObject` | `stageId` и список worker'ов |
-| `WorkerDescriptionDataObject` | имя, описание и конфигурационные файлы worker'а |
-| `ConfigurationFileDataObject` | описание и `configurationFileId` |
-| `SharedResourcesContainerDataObject` | цепочка class loader'ов общих JAR; реализует `AutoCloseable` |
-
-Связи основных DTO:
-
-```text
-ProjectLoadResultDataObject
-├── ProjectGlobalDataObject
-│   ├── StorageDataObject[]
-│   └── ServiceDataObject[]
-├── NodeContainerDataObject
-│   ├── ProjectStructureDataObject
-│   │   ├── ProjectDataObject
-│   │   └── NodeDataObject[]
-│   ├── NodeGlobalDataObject[]
-│   └── PipelineDataObject[]
-└── SharedResourcesContainerDataObject
-```
-
-Классы пакета `infrastructure.dto.raw` — технические Gson DTO, отражающие JSON-поля. Обычно пользователь библиотеки с ними напрямую не работает:
-
-- `Project`, `GraphStructure` — `Project.json`;
-- `Global`, `ServicesItem`, `StoragesItem`, `OptionsItem` — глобальная и узловая конфигурация;
-- `NodeGlobal` — `global.json` узла;
-- `Pipeline`, `StagesConsistencyItem`, `StagesDescriptionItem`, `WorkersDescriptionItem`, `ConfigurationFilesItem` — `pipeline.json`.
-
-## Загрузка модулей, метаданных редактора и сервисов
-
-JAR-плагины обнаруживаются стандартным Java SPI. JAR модуля должен регистрировать реализацию `WorkflowRoutineFactoryInterface`, а JAR сервиса — `ServiceFactoryInterface` в `META-INF/services/...`. Для интеграции с редактором JAR модуля дополнительно регистрирует `RoutineEditorDescriptorProvider`, а JAR сервиса — `ServiceEditorDescriptorProvider`.
-
-```java
-try (ModuleLoaderInterface modules = ModuleLoaderFactory.create(
-        projectDirectory.resolve("modules/workflow_routines"),
-        project.getSharedResourcesContainer()
-)) {
-    System.out.println(modules.getAvailableModuleNames());
-    WorkflowRoutineInterface routine = modules.getModule(
-            "MyRoutine",
-            routineApi,
-            routineHealthFlag
-    );
-}
-```
-
-Имя плагина вычисляется из простого имени фабрики удалением суффикса `Factory`: `MyRoutineFactory` становится `MyRoutine`. Дублирующиеся имена считаются ошибкой. `ModuleLoaderInterface` и `ServiceLoaderInterface` владеют своими class loader'ами и должны закрываться.
-
-Метаданные редактора загружаются отдельно от исполняемой фабрики:
-
-```java
-try (RoutineEditorMetadataLoaderInterface metadataLoader =
-             RoutineEditorMetadataLoaderFactory.create(
-                     projectDirectory.resolve("modules/workflow_routines"),
-                     project.getSharedResourcesContainer()
-             )) {
-    for (RoutineEditorMetadataDataObject metadata
-            : metadataLoader.getAvailableMetadata()) {
-        System.out.println(metadata.getRoutineId());
-        System.out.println(metadata.getVersion());
-        System.out.println(metadata.getDescriptor().getFunctions());
-    }
-}
-```
-
-`RoutineEditorMetadataDataObject` содержит неизменяемый `RoutineEditorDescriptor`, абсолютный путь исходного JAR и `Implementation-Version` из `META-INF/MANIFEST.MF`. Если версия в manifest не задана, возвращается пустая строка. Повторяющийся `routineId` считается ошибкой загрузки.
-
-Сервисы публикуют метаданные симметрично через `ServiceEditorDescriptorProvider`.
-`ServiceEditorDescriptor` объявляет идентификатор, отображаемое имя, описание и параметры.
-Для каждого параметра задаются тип, default, варианты `SELECT` и роль хранилища
-`NONE`, `INPUT` или `OUTPUT`. `ServiceEditorMetadataDataObject` также добавляет абсолютный
-путь JAR и `Implementation-Version`; повторяющийся `serviceId` считается ошибкой загрузки.
-
-Публичный JDK-only SPI находится в пакетах
-`io.github.byzatic.tessera.lib.configio.unified.spi.routine` и
-`io.github.byzatic.tessera.lib.configio.unified.spi.service`. Descriptor-модели неизменяемы
-и создаются через `newBuilder()`. Реализация провайдера должна иметь публичный конструктор
-без аргументов и регистрацию:
-
-```text
-META-INF/services/io.github.byzatic.tessera.lib.configio.unified.spi.routine.RoutineEditorDescriptorProvider
-```
-
-Для service JAR используется регистрация:
-
-```text
-META-INF/services/io.github.byzatic.tessera.lib.configio.unified.spi.service.ServiceEditorDescriptorProvider
-```
-
-Старые пакеты `routine_spi` и `service_spi` поддерживаются как compatibility API для уже
-собранных JAR. Новые плагины должны зависеть только от пространства имён `unified`.
-
-## Отслеживание ревизий ZIP
-
-`ProjectRevisionSourceFactory` создаёт polling-источник. Он ждёт несколько одинаковых наблюдений размера и времени изменения файла, вычисляет SHA-256, копирует и распаковывает архив в отдельный временный каталог, загружает проект и передаёт готовую ревизию listener'у.
-
-```java
-ZipProjectRevisionSourceConfiguration configuration =
-        ZipProjectRevisionSourceConfiguration.newBuilder()
-                .sourceArchive(Path.of("deploy/project.zip"))
-                .stagingDirectory(Path.of("runtime/revisions"))
-                .pollInterval(Duration.ofSeconds(1))
-                .stableObservationCount(2)
-                .maximumEntryCount(100_000)
-                .maximumExpandedBytes(1024L * 1024L * 1024L)
-                .build();
-
-try (ProjectRevisionSource source = ProjectRevisionSourceFactory.create(configuration)) {
-    source.start(new ProjectRevisionListener() {
-        @Override
-        public void onRevisionAvailable(ProjectRevision revision) {
-            // Listener принимает владение ревизией.
-            // Закрывать её можно только после остановки runtime, который её использует.
-            activate(revision);
-        }
-
-        @Override
-        public void onRevisionRejected(ProjectRevisionFailure failure) {
-            failure.getCause().printStackTrace();
-        }
-    });
-
-    awaitShutdown();
-}
-```
-
-Callback'и выполняются последовательно в одном потоке источника и должны быстро возвращать управление. Получатель `ProjectRevision` отвечает за вызов `close()`: он закрывает ресурсы проекта и удаляет временный каталог ревизии. Ошибка новой ревизии не затрагивает ранее активированную ревизию.
-
-Значения по умолчанию: интервал — 1 секунда, стабильных наблюдений — 2, максимум записей ZIP — 100 000, максимум распакованных данных — 1 GiB.
-
-## Исключения
-
-| Исключение | Когда возникает |
-|---|---|
-| `ProjectLoadingException` | неверный каталог, JSON, структура или версия проекта |
-| `ProjectSavingException` | ошибка валидации, записи JSON, копирования плагина или архивации |
-| `PluginLoadingException` | ошибка чтения JAR, SPI, дублирование или создание плагина |
-| `PluginSavingException` | неверный JAR или ошибка его копирования |
-| `ProjectRevisionException` | источник ревизий не стартует либо ZIP не проходит проверку/подготовку; во втором случае исключение приходит внутри `ProjectRevisionFailure` |
+Пакет `io.github.byzatic.tessera.lib.configio.unified.internal` является деталью реализации и не
+предназначен для использования приложениями.
 
 ## Сборка и тесты
 
@@ -362,8 +368,6 @@ mvn test
 mvn verify -Dgpg.skip=true
 ```
 
-Интерактивный пример загрузчика расположен в `ProjectLoaderExampleApplication`.
-
 ## Лицензия
 
-[Apache License 2.0](LICENSE).
+[Apache License 2.0](LICENSE)
