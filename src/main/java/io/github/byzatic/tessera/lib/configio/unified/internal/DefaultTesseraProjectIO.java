@@ -103,7 +103,8 @@ public final class DefaultTesseraProjectIO implements TesseraProjectIO {
                     project.getNodeContainer(),
                     request.getArtifacts().getRoutineJars(),
                     request.getArtifacts().getServiceJars(),
-                    mapper.toLegacyDslSources(request.getArtifacts().getDslSources())
+                    mapper.toLegacyDslSources(request.getArtifacts().getDslSources()),
+                    request.getArtifacts().getSharedJars()
             );
             return SaveProjectResult.newBuilder()
                     .projectDirectory(location)
@@ -133,7 +134,8 @@ public final class DefaultTesseraProjectIO implements TesseraProjectIO {
                     project.getNodeContainer(),
                     request.getArtifacts().getRoutineJars(),
                     request.getArtifacts().getServiceJars(),
-                    mapper.toLegacyDslSources(request.getArtifacts().getDslSources())
+                    mapper.toLegacyDslSources(request.getArtifacts().getDslSources()),
+                    request.getArtifacts().getSharedJars()
             ));
         } catch (Exception exception) {
             throw failure(

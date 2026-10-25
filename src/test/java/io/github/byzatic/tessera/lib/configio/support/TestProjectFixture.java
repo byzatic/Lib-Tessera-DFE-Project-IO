@@ -1,6 +1,8 @@
 package io.github.byzatic.tessera.lib.configio.support;
 
 import io.github.byzatic.tessera.lib.configio.unified.spi.routine.BduiWidgetIds;
+import io.github.byzatic.tessera.lib.configio.unified.spi.routine.ConfigurationFileScope;
+import io.github.byzatic.tessera.lib.configio.unified.spi.routine.RoutineConfigurationFileDescriptor;
 import io.github.byzatic.tessera.lib.configio.unified.spi.routine.RoutineEditorDescriptor;
 import io.github.byzatic.tessera.lib.configio.unified.spi.routine.RoutineEditorDescriptorProvider;
 import io.github.byzatic.tessera.lib.configio.unified.spi.routine.RoutineFunctionDescriptor;
@@ -92,7 +94,7 @@ public final class TestProjectFixture implements AutoCloseable {
                         DataEnrichmentWorkflowRoutineFactory.class,
                         GraphLiftingDataWorkflowRoutineFactory.class
                 },
-                DataEnrichmentEditorDescriptorProvider.class
+                GetDataEditorDescriptorProvider.class
         );
         Path serviceJar = servicesDirectory.resolve("test-services.jar");
         createServiceProviderJar(
@@ -357,26 +359,43 @@ public final class TestProjectFixture implements AutoCloseable {
         }
     }
 
-    public static final class DataEnrichmentEditorDescriptorProvider
+    public static final class GetDataEditorDescriptorProvider
             implements RoutineEditorDescriptorProvider {
 
         @Override
         public RoutineEditorDescriptor getDescriptor() {
             RoutineFunctionDescriptor function = RoutineFunctionDescriptor.newBuilder()
-                    .functionId("AddLabel")
-                    .displayName("Add Label")
-                    .description("Adds or replaces labels on a metric.")
+                    .functionId("GenerateData")
+                    .displayName("Generate data")
+                    .description("Generates data from the attached configuration.")
                     .bduiWidgetIds(List.of(
                             BduiWidgetIds.FUNC_ENV,
                             BduiWidgetIds.FUNC_INPUT_DATA,
                             BduiWidgetIds.FUNC_OUTPUT_DATA
                     ))
-                    .argumentIds(List.of("DataId"))
+                    .argumentIds(List.of())
                     .build();
             return RoutineEditorDescriptor.newBuilder()
-                    .routineId("DataEnrichmentWorkflowRoutine")
-                    .displayName("Data Enrichment")
-                    .description("Enriches metric data with labels and graph context.")
+                    .routineId("GetDataWorkflowRoutine")
+                    .displayName("Get Data")
+                    .description("Generates data from configuration.")
+                    .routineWidgetIds(List.of(BduiWidgetIds.ROUTINE_CONFIGURATION_FILE))
+                    .environment(List.of())
+                    .configurationFiles(List.of(
+                            RoutineConfigurationFileDescriptor.newBuilder()
+                                    .key("configurationFilePath")
+                                    .displayName("Generator configuration")
+                                    .description("Configuration used by the data generator")
+                                    .suggestedFileName("GeneratorConfigurationFile.json")
+                                    .allowedExtensions(List.of(".json"))
+                                    .allowedScopes(List.of(
+                                            ConfigurationFileScope.NODE,
+                                            ConfigurationFileScope.PROJECT_GLOBAL
+                                    ))
+                                    .defaultScope(ConfigurationFileScope.NODE)
+                                    .required(true)
+                                    .build()
+                    ))
                     .functions(List.of(function))
                     .build();
         }

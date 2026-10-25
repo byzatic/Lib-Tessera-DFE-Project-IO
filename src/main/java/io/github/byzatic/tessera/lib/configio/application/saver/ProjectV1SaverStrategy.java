@@ -112,6 +112,22 @@ public final class ProjectV1SaverStrategy implements ProjectSaverInterface {
             List<Path> serviceJars,
             List<DslFileDataObject> dslFiles
     ) throws ProjectSavingException {
+        return save(projectDirectory, global, nodeContainer, moduleJars, serviceJars, dslFiles, List.of());
+    }
+
+    @Override
+    public Path save(
+            Path projectDirectory,
+            ProjectGlobalDataObject global,
+            NodeContainerDataObject nodeContainer,
+            List<Path> moduleJars,
+            List<Path> serviceJars,
+            List<DslFileDataObject> dslFiles,
+            List<Path> sharedJars
+    ) throws ProjectSavingException {
+        if (sharedJars == null) {
+            throw new ProjectSavingException("Shared JAR list must not be null");
+        }
         Path normalizedProjectDirectory = normalizeProjectDirectory(projectDirectory);
         if (global == null) {
             throw new ProjectSavingException("Project global configuration must not be null");
@@ -140,6 +156,13 @@ public final class ProjectV1SaverStrategy implements ProjectSaverInterface {
                     projectStructure,
                     nodeContainer.getPipelines()
             );
+            for (Path sharedJar : sharedJars) {
+                try {
+                    moduleSaver.saveShared(sharedJar, normalizedProjectDirectory);
+                } catch (PluginSavingException exception) {
+                    throw new ProjectSavingException("Cannot save shared JAR: " + sharedJar, exception);
+                }
+            }
             saveModules(moduleJars, normalizedProjectDirectory);
             saveServices(serviceJars, normalizedProjectDirectory);
             dslFileSaver.save(normalizedProjectDirectory, nodeContainer, dslFiles);

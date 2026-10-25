@@ -51,3 +51,6 @@ data/configProject/*
 configurations/*
 # Не игнорировать example.configuration.xml в configurations
 !configurations/example.configuration.xml
+
+.idea/
+src/test/resources/*.jar

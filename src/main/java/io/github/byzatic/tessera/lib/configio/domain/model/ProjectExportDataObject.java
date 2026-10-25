@@ -12,6 +12,7 @@ public final class ProjectExportDataObject {
     private final Path archiveDestination;
     private final ProjectGlobalDataObject global;
     private final NodeContainerDataObject nodeContainer;
+    private final List<Path> sharedJars;
     private final List<Path> moduleJars;
     private final List<Path> serviceJars;
     private final List<DslFileDataObject> dslFiles;
@@ -24,6 +25,20 @@ public final class ProjectExportDataObject {
             List<Path> serviceJars,
             List<DslFileDataObject> dslFiles
     ) {
+        this(archiveDestination, global, nodeContainer, moduleJars, serviceJars, dslFiles, List.of());
+    }
+
+    /** Creates export input including shared-resource JARs. */
+    public ProjectExportDataObject(
+            Path archiveDestination,
+            ProjectGlobalDataObject global,
+            NodeContainerDataObject nodeContainer,
+            List<Path> moduleJars,
+            List<Path> serviceJars,
+            List<DslFileDataObject> dslFiles,
+            List<Path> sharedJars
+    ) {
+        this.sharedJars = immutableList(sharedJars, "sharedJars");
         this.archiveDestination = Objects.requireNonNull(archiveDestination, "archiveDestination");
         this.global = Objects.requireNonNull(global, "global");
         this.nodeContainer = Objects.requireNonNull(nodeContainer, "nodeContainer");
@@ -35,6 +50,7 @@ public final class ProjectExportDataObject {
     public Path getArchiveDestination() { return archiveDestination; }
     public ProjectGlobalDataObject getGlobal() { return global; }
     public NodeContainerDataObject getNodeContainer() { return nodeContainer; }
+    public List<Path> getSharedJars() { return sharedJars; }
     public List<Path> getModuleJars() { return moduleJars; }
     public List<Path> getServiceJars() { return serviceJars; }
     public List<DslFileDataObject> getDslFiles() { return dslFiles; }
