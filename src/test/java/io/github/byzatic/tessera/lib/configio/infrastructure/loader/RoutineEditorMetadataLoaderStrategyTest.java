@@ -31,8 +31,8 @@ public class RoutineEditorMetadataLoaderStrategyTest {
 
             assertEquals(1, available.size());
             RoutineEditorMetadataDataObject metadata = available.get(0);
-            assertEquals("DataEnrichmentWorkflowRoutine", metadata.getRoutineId());
-            assertEquals("Data Enrichment", metadata.getDescriptor().getDisplayName());
+            assertEquals("GetDataWorkflowRoutine", metadata.getRoutineId());
+            assertEquals("Get Data", metadata.getDescriptor().getDisplayName());
             assertEquals("1.2.3", metadata.getVersion());
             assertEquals("test-workflow-routines.jar", metadata.getArtifactFileName());
             assertEquals(
@@ -40,10 +40,10 @@ public class RoutineEditorMetadataLoaderStrategyTest {
                     metadata.getDescriptor().getFunctions().get(0).getBduiWidgetIds()
             );
             assertEquals(
-                    List.of("DataId"),
+                    List.of(),
                     metadata.getDescriptor().getFunctions().get(0).getArgumentIds()
             );
-            assertTrue(loader.findMetadata("DataEnrichmentWorkflowRoutine").isPresent());
+            assertTrue(loader.findMetadata("GetDataWorkflowRoutine").isPresent());
             assertFalse(loader.findMetadata("UnknownRoutine").isPresent());
         }
     }
@@ -80,7 +80,8 @@ public class RoutineEditorMetadataLoaderStrategyTest {
                     )
             );
 
-            assertTrue(failure.getMessage().contains("DataEnrichmentWorkflowRoutine"));
+            assertTrue(failure.getMessage().contains("GetDataWorkflowRoutine"));
         }
     }
+
 }
